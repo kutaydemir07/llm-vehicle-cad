@@ -1,0 +1,19 @@
+[project]
+name = "llm-vehicle-cad"
+version = "0.1.0"
+description = "Script-based vehicle CAD generated with LLM prompting, product development reasoning, Python, and CadQuery."
+requires-python = ">=3.11"
+dependencies = [
+    "cadquery>=2.6",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+render = [
+    "matplotlib>=3.8",
+    "pyvista>=0.43",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
