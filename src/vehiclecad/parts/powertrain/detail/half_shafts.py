@@ -6,6 +6,7 @@ boot (lofted bellows) sealing each joint  -  recognisable hardware, not a tube.
 """
 from __future__ import annotations
 from vehiclecad.core.reference import common as C
+from vehiclecad.geometry import machine_elements as ME
 from vehiclecad.parts.powertrain.detail import layout as L
 
 _mirror = C.mirror_y
@@ -53,7 +54,7 @@ def _half_shaft_left():
     outer = C.cyl(36, 52, (X, HUB_Y - 52, Z), (0, 1, 0))
     for y, radius, housing in ((FL_Y + 9, 42, inner), (HUB_Y - 9, 44, outer)):
         for sx, sz in ((24, 18), (-24, 18), (24, -18), (-24, -18)):
-            housing = housing.fuse(C.cyl(5.5, 8, (X + sx, y, Z + sz), (0, 1, 0)))
+            housing = housing.fuse(ME.cap_screw("M8", 8, (X + sx, y, Z + sz), (0, 1, 0)))
         if y < (FL_Y + HUB_Y) / 2:
             inner = housing.fuse(C.cyl(radius, 6, (X, FL_Y - 3, Z), (0, 1, 0)))
         else:
@@ -70,9 +71,10 @@ def _half_shaft_left():
     out.append((_clamp_band(outer_boot_start, 13, 10, SHAFT_Z), CLAMP, "CV_Boot_Outer_Clamp_Small"))
 
     # Axle nut just outboard of the outer CV/hub interface.
-    axle_nut = C.cyl(18, 12, (X, HUB_Y + 2, Z), (0, 1, 0)).cut(
-        C.cyl(8, 14, (X, HUB_Y + 1, Z), (0, 1, 0))
-    )
+    axle_nut = C.U([
+        ME.washer(22, 8, 3, (X, HUB_Y - 1, Z), (0, 1, 0)),
+        ME.hex_nut("M14", (X, HUB_Y + 2, Z), (0, 1, 0)),
+    ])
     out.append((axle_nut, CLAMP, "CV_Axle_Nut"))
     return out
 

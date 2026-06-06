@@ -28,6 +28,8 @@ switch ($Target) {
         python -m vehiclecad.tools.audit_vehicle_contract --collisions off
         python -m vehiclecad.tools.audit_vmodel_structure
         python -m vehiclecad.tools.audit_atomic_detail
+        python -m vehiclecad.tools.audit_machine_elements
+        python -m vehiclecad.tools.audit_functional_mechanisms
         python -m vehiclecad.tools.audit_modela_sportscar_reference
     }
     default {

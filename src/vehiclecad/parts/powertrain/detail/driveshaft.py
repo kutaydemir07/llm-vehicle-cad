@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference import mating
+from vehiclecad.geometry import machine_elements as ME
 from vehiclecad.parts.powertrain.detail import layout as L
 
 COL    = C.STRUCT
@@ -41,10 +42,8 @@ def _bolt_circle_x(center, radius, bolt_r, bolt_len, count, name):
         a = 2.0 * math.pi * i / count
         y = cy + radius * math.cos(a)
         z = cz + radius * math.sin(a)
-        shank = C.cyl(bolt_r, bolt_len, (cx - bolt_len / 2.0, y, z), (1, 0, 0))
-        head = C.cyl(bolt_r * 1.65, 5, (cx + bolt_len / 2.0 - 2.5, y, z), (1, 0, 0))
-        nut = C.cyl(bolt_r * 1.45, 5, (cx - bolt_len / 2.0 - 2.5, y, z), (1, 0, 0))
-        bolts.append(C.U([shank, head, nut]))
+        designation = "M8" if bolt_r <= 4.5 else "M10"
+        bolts.append(ME.through_bolt(designation, bolt_len, (cx - bolt_len / 2.0, y, z), (1, 0, 0)))
     return C.U(bolts), FASTENER, name
 
 

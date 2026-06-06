@@ -21,6 +21,7 @@ import cadquery as cq
 from cadquery import Solid, Compound, Vector
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference import mating
+from vehiclecad.geometry import machine_elements as ME
 
 # ---- local dimensions ----
 R_TIRE = C.TIRE_R           # 300 (tread outer)
@@ -108,9 +109,16 @@ def _rim():
                              for a in np.linspace(0, 2 * np.pi, 5, endpoint=False)]))
     parts.append((hub, ALLOY, "hub"))
 
-    # 5 lug bolts on a 5x120 PCD
-    lugs = [C.cyl(8, 18, (58 * np.cos(a), FACE_Y + 22, 58 * np.sin(a)), (0, 1, 0))
-            for a in np.linspace(0, 2 * np.pi, 5, endpoint=False)]
+    # 5x120 lug hardware: M12 wheel bolts with washer seats and hex heads.
+    lugs = [
+        ME.cap_screw(
+            "M12",
+            22,
+            (58 * np.cos(a), FACE_Y + 18, 58 * np.sin(a)),
+            (0, 1, 0),
+        )
+        for a in np.linspace(0, 2 * np.pi, 5, endpoint=False)
+    ]
     parts.append((_compound(lugs), LUG, "lug_bolts"))
 
     # roundel centre cap (proper four-quarter Classic roundel).  The roundel must sit
@@ -206,7 +214,17 @@ def _caliper_local(r_disc=152.0):
         C.cyl(18, 8, (r_disc - 16, 24, z), (0, 1, 0))
         for z in (-24, 24)
     ]
-    return C.U([inboard, outboard, bridge_top, bridge_bottom] + pistons)
+    through_bolts = [
+        ME.through_bolt("M10", 84, (r_disc + 4, -72, z), (0, 1, 0))
+        for z in (-50, 54)
+    ]
+    return C.U([inboard, outboard, bridge_top, bridge_bottom] + pistons + through_bolts)
+
+
+def _detail_bearing_hub(solid):
+    bearing = ME.radial_ball_bearing(44, 20, 22, (0, 10, 0), (0, 1, 0), ball_count=12)
+    seal = C.cyl(48, 4, (0, 31, 0), (0, 1, 0)).cut(C.cyl(23, 6, (0, 30, 0), (0, 1, 0)))
+    return solid.fuse(bearing).fuse(seal)
 
 
 def _mate_corner_flat(fr):
@@ -224,6 +242,10 @@ def _mate_corner_flat(fr):
         hub = _hub_local().val()
         rotor = _rotor_local(r_disc).val().moved(cq.Location(cq.Vector(0, -22, 0)))
         flat = [(hub, HUB_C, "bearing_hub"), (rotor, ROTOR_C, "brake_rotor")]
+    flat = [
+        (_detail_bearing_hub(solid), color, name) if name == "bearing_hub" else (solid, color, name)
+        for solid, color, name in flat
+    ]
     flat.append((_caliper_local(r_disc), C.CALIPER, "brake_caliper"))
     flat += list(_build_left())                              # detailed tyre + rim
     _MATE_CORNER[fr] = flat

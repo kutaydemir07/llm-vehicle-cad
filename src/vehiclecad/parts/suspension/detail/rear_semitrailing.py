@@ -25,6 +25,7 @@ import cadquery as cq
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference import hardpoints as SK
 from vehiclecad.core.reference import mating
+from vehiclecad.geometry import machine_elements as ME
 
 REAR = SK.REAR_SUSP
 _cyl    = C.cyl
@@ -64,9 +65,9 @@ def _trailing_arm_left():
                            (3300, 645, 312), boss], 27, cap=True)
     web    = C.swept_tube([(3185, 472, 332), (3212, 566, 332)], 14, cap=True)
 
-    # subframe pivot bushings (cylindrical housings, axis along Y)
-    bush_i = _cyl(32, 56, (ip[0] - 12, ip[1] - 28, ip[2]), (0, 1, 0))
-    bush_o = _cyl(32, 56, (op[0] - 12, op[1] - 28, op[2]), (0, 1, 0))
+    # sleeved bonded rubber pivot bushings, axis along Y
+    bush_i = ME.bonded_bushing(32, 10, 56, (ip[0] - 12, ip[1] - 28, ip[2]), (0, 1, 0))
+    bush_o = ME.bonded_bushing(32, 10, 56, (op[0] - 12, op[1] - 28, op[2]), (0, 1, 0))
 
     # hub boss: short tube along Y, bored so the hub's seal collar clears; its
     # outboard face (boss_face) is where the hub carrier seats.
@@ -86,7 +87,7 @@ def _trailing_arm_left():
     ear_l = _rbox(dm[0] - ear_dx / 2, dm[1] + gap / 2,        ear_z0, ear_dx, ear_t, ear_dz, 6)
     ear_r = _rbox(dm[0] - ear_dx / 2, dm[1] - gap / 2 - ear_t, ear_z0, ear_dx, ear_t, ear_dz, 6)
     brkt  = C.swept_tube([(3300, 612, 316), (dm[0], dm[1], dm[2] - 36)], 13, cap=True)
-    pin   = _cyl(6.5, gap + 2 * ear_t + 4, (dm[0], dm[1] - gap / 2 - ear_t - 2, dm[2]), (0, 1, 0))
+    pin   = ME.clevis_pin(6.5, gap + 2 * ear_t + 4, (dm[0], dm[1] - gap / 2 - ear_t - 2, dm[2]), (0, 1, 0))
 
     # ARB drop-link tab on a short post off the hub boss (near the hub, rearward
     # and outboard of the spring/damper)
@@ -108,7 +109,8 @@ def _rear_hub_left():
     # onto the hub axis where the cast spars converge), so arm and hub only share
     # the seat plane.
     collar  = _cyl(18, 6, (hub[0], seat_y - 6, hub[2]),     (0, 1, 0))
-    return _U([housing, flange, collar])
+    bearing = ME.radial_ball_bearing(43, 20, 22, (hub[0], seat_y + 22, hub[2]), (0, 1, 0), ball_count=12)
+    return _U([housing, flange, collar, bearing])
 
 
 # ------------------------------------------------------------------------
@@ -170,7 +172,7 @@ def _damper_upper_mount(z: float):
     cup    = _cyl(40, 12, (0, 0, z - 12), (0, 0, 1))
     rubber = _cyl(30, 22, (0, 0, z - 2),  (0, 0, 1))
     plate  = _cyl(44, 8,  (0, 0, z + 20), (0, 0, 1))
-    stud   = _cyl(9,  26, (0, 0, z + 28), (0, 0, 1))
+    stud   = ME.threaded_stud_with_nut("M8", 26, (0, 0, z + 28), (0, 0, 1))
     return _U([cup, rubber, plate, stud])
 
 

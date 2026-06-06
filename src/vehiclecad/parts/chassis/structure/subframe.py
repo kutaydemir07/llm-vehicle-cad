@@ -9,6 +9,7 @@ hardpoint envelopes instead of filling the bounding box.
 from __future__ import annotations
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference import hardpoints as SK
+from vehiclecad.geometry import machine_elements as ME
 
 _U      = C.U
 _cyl    = C.cyl
@@ -47,8 +48,8 @@ def _subframe_body():
         )
 
         # Rubber bushing housings are coaxial with the trailing-arm pivot tube.
-        bush_i = _cyl(36, 46, (ip[0] - 18, ip[1] - s * 23, ip[2] - 18), (0, s, 0))
-        bush_o = _cyl(36, 46, (op[0] - 18, op[1] - s * 23, op[2] - 18), (0, s, 0))
+        bush_i = ME.bonded_bushing(36, 11, 46, (ip[0] - 18, ip[1] - s * 23, ip[2] - 18), (0, s, 0))
+        bush_o = ME.bonded_bushing(36, 11, 46, (op[0] - 18, op[1] - s * 23, op[2] - 18), (0, s, 0))
 
         # Body mounting feet attach below the floor and stay below the propshaft.
         mount_f = _rbox_center(2918, s * 286, 180, 70, 54, 22, 6)

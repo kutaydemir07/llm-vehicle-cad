@@ -14,6 +14,7 @@ Collision-free:
 from __future__ import annotations
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference.hardpoints import POWERTRAIN as PT
+from vehiclecad.geometry import machine_elements as ME
 
 _box    = C.box
 _cyl    = C.cyl
@@ -47,8 +48,8 @@ def _engine_mount_bracket_left():
         my + 24, my + 34
     )
     bolt_bosses = [
-        _cyl(8, 8, (mx - 28, my - 18, mz - 70), (0, 0, 1)),
-        _cyl(8, 8, (mx + 28, my + 18, mz - 70), (0, 0, 1)),
+        ME.cap_screw("M10", 12, (mx - 28, my - 18, mz - 78), (0, 0, 1)),
+        ME.cap_screw("M10", 12, (mx + 28, my + 18, mz - 78), (0, 0, 1)),
     ]
     return _U([shelf, outboard_web, front_web, rear_web, gus_front, gus_rear] + bolt_bosses)
 
@@ -65,7 +66,7 @@ def _front_rail_left():
     hem_front = _rbox(372, 580, 282, 226, 16, 10, 3)
     hem_rear = _rbox(1022, 580, 282, 174, 16, 10, 3)
     bolt_pads = [
-        _cyl(9, 8, (x, 576, 244), (0, 0, 1))
+        ME.cap_screw("M8", 10, (x, 576, 238), (0, 0, 1))
         for x in (450, 580, 1060, 1160)
     ]
     return _U([spine_front, spine_rear, hem_front, hem_rear] + bolt_pads)
@@ -81,9 +82,8 @@ def _body_mounts():
     mounts = []
     for x, y in ((1240, 520), (1240, -520), (2800, 620), (2800, -620)):
         pad = _U([
-            _cyl(32, 16, (x, y, 199), (0, 0, 1)),
-            _cyl(38, 4, (x, y, 195), (0, 0, 1)),
-            _cyl(10, 20, (x, y, 175), (0, 0, 1)),
+            ME.bonded_bushing(32, 10, 22, (x, y, 177), (0, 0, 1)),
+            ME.through_bolt("M10", 38, (x, y, 174), (0, 0, 1)),
         ])
         side = "L" if y > 0 else "R"
         pos  = "F" if x < 2000 else "R"
@@ -113,9 +113,10 @@ def _engine_mount_rubbers():
     for tag, nm in (("engine_mount_L", "L"), ("engine_mount_R", "R")):
         mx, my, mz = PT[tag]
         rub = _U([
-            _cyl(22, 4, (mx, my, mz - 54), (0, 0, 1)),
             _cyl(26, 28, (mx, my, mz - 50), (0, 0, 1)),
-            _cyl(22, 2, (mx, my, mz - 22), (0, 0, 1)),
+            ME.washer(34, 12, 4, (mx, my, mz - 56), (0, 0, 1)),
+            ME.washer(32, 12, 4, (mx, my, mz - 22), (0, 0, 1)),
+            ME.threaded_stud_with_nut("M12", 52, (mx, my, mz - 66), (0, 0, 1)),
         ])
         out.append((rub, C.RUBBER, f"PRT_Engine_Mount_Rubber_{nm}"))
     return out
@@ -129,8 +130,8 @@ def _trans_mount_rubber():
     pucks = []
     for y in (190, -190):
         pucks.extend([
-            _cyl(24, 16, (tm[0], y, 354), (0, 0, 1)),
-            _cyl(8, 10, (tm[0], y, 370), (0, 0, 1)),
+            ME.bonded_bushing(24, 8, 16, (tm[0], y, 354), (0, 0, 1)),
+            ME.threaded_stud_with_nut("M8", 20, (tm[0], y, 368), (0, 0, 1)),
         ])
     rub = _U(pucks)
     return [(rub, C.RUBBER, "PRT_Trans_Mount_Rubber")]

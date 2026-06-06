@@ -6,8 +6,10 @@ tie rods mated to the front upright steering-arm hardpoints.  The rack sits low
 under the I4_Engine oil pan, while the tie rods slope up to the knuckles.
 """
 from __future__ import annotations
+import math
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference import hardpoints as SK
+from vehiclecad.geometry import machine_elements as ME
 
 FRONT = SK.FRONT_SUSP
 STEER = SK.STEERING
@@ -50,7 +52,9 @@ def _rack():
     right_inner = STEER["rack_inner_R"]
 
     # Rack casting spans between inner joints and clears the oil-pan underside.
-    rack_housing = _cyl(28, 650, (x, -325, z), (0, 1, 0))
+    rack_housing = _cyl(28, 650, (x, -325, z), (0, 1, 0)).cut(
+        _cyl(13, 654, (x, -327, z), (0, 1, 0))
+    )
     centre_bulge = _cyl(38, 78, (x - 4, -39, z), (0, 1, 0))
     cap_l = _cyl(32, 18, (left_inner[0], left_inner[1] - 9, z), (0, 1, 0))
     cap_r = _cyl(32, 18, (right_inner[0], right_inner[1] - 9, z), (0, 1, 0))
@@ -82,5 +86,29 @@ def _rack():
     ])
 
 
+def _rack_bar_pinion_gear():
+    """Toothed rack bar and pinion gear inside the hollow rack housing."""
+    x, _, z = STEER["rack_centre"]
+    px, py, pz = STEER["pinion_base"]
+    rack_bar = _rbox(x - 7, -286, z - 7, 14, 572, 14, 3)
+    teeth = []
+    for i in range(30):
+        y = -240 + i * 16
+        teeth.append(_rbox(x - 9, y, z + 7, 18, 7, 5, 1))
+
+    pinion = _cyl(20, 18, (px, py, pz + 4), (0, 0, 1))
+    pinion_teeth = []
+    for i in range(14):
+        a = math.radians(i * 360.0 / 14)
+        tooth = _rbox(px - 4, py - 3, pz + 22, 8, 6, 6, 1)
+        pinion_teeth.append(tooth.rotate((px, py, pz + 13), (px, py, pz + 14), math.degrees(a)))
+    lower_bearing = ME.radial_ball_bearing(13, 6, 8, (px, py, pz - 6), (0, 0, 1), ball_count=8)
+    upper_bearing = ME.radial_ball_bearing(13, 6, 8, (px, py, pz + 88), (0, 0, 1), ball_count=8)
+    return _U([rack_bar, pinion, lower_bearing, upper_bearing] + teeth + pinion_teeth)
+
+
 def parts():
-    return [(_rack(), COL, "PRT_Steering_Rack")]
+    return [
+        (_rack(), COL, "PRT_Steering_Rack"),
+        (_rack_bar_pinion_gear(), (0.58, 0.59, 0.62), "PRT_Steering_Rack_Bar_Pinion_Gear"),
+    ]

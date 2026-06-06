@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from cadquery import Solid, Vector
 from vehiclecad.core.reference import common as C
-from vehiclecad.parts.body.structure import body as body_shell
+from vehiclecad.parts.body.structure import body as body_structure
 from vehiclecad.parts.exterior.detail import frontend, rearend
 from vehiclecad.vehicle import studio
 
@@ -20,7 +20,7 @@ OUT = str(_PROJECT_ROOT / "exports" / "screenshots" / "diag_biw.png")
 def real_shell():
     # door apertures so the BIW reads as a real shell with openings
     door = C.box(1505, -905, 300, 980, 1810, 716)
-    return body_shell._panel_tool().cut(door)
+    return body_structure._panel_tool().cut(door)
 
 
 def half(parts, keepy=0.0):

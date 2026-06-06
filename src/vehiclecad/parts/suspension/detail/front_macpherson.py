@@ -21,6 +21,7 @@ import cadquery as cq
 from vehiclecad.core.reference import common as C
 from vehiclecad.core.reference import hardpoints as SK
 from vehiclecad.core.reference import mating
+from vehiclecad.geometry import machine_elements as ME
 
 FRONT = SK.FRONT_SUSP
 _cyl    = C.cyl
@@ -75,7 +76,13 @@ def _strut_top_mount():
     plate  = cq.Workplane("XY").cylinder(16, 62).translate((0, 0, 8))    # z 0..16
     rubber = cq.Workplane("XY").cylinder(24, 48).translate((0, 0, 28))   # z 16..40
     stud   = cq.Workplane("XY").cylinder(24, 10).translate((0, 0, 52))   # z 40..64
+    studs = [
+        ME.threaded_stud_with_nut("M8", 28, (42 * np.cos(a), 42 * np.sin(a), 40), (0, 0, 1))
+        for a in np.linspace(0, 2 * np.pi, 3, endpoint=False)
+    ]
     m = uperch.union(plate).union(rubber).union(stud)
+    for fastener in studs:
+        m = m.union(fastener)
     mating.tag(m, base="<Z")
     return m
 
@@ -128,15 +135,16 @@ def _lca_left():
     arm_r = C.swept_tube([rp, (900, 425, 226), (834, 616, 230), bjm], 18, cap=True)
     web   = C.swept_tube([(758, 392, 222), (892, 396, 226)], 12, cap=True)
 
-    # pivot bushings (cylindrical housings, axis along X)
-    bush_f = _cyl(24, 50, (fp[0] - 25, fp[1], fp[2]), (1, 0, 0))
-    bush_r = _cyl(24, 50, (rp[0] - 25, rp[1], rp[2]), (1, 0, 0))
+    # bonded pivot bushings with steel sleeves, axis along X
+    bush_f = ME.bonded_bushing(24, 8, 50, (fp[0] - 25, fp[1], fp[2]), (1, 0, 0))
+    bush_r = ME.bonded_bushing(24, 8, 50, (rp[0] - 25, rp[1], rp[2]), (1, 0, 0))
 
     # ball-joint housing: cup holding the ball, its TOP face at z248 (coincident
     # with the knuckle underside); the r9.5 stud rises into the knuckle bore.
     housing = _cyl(24, 34, (bj[0], bj[1], bj[2] - 34), (0, 0, 1))   # z214..248
     stud    = _cyl(9.5, 32, (bj[0], bj[1], bj[2] - 4), (0, 0, 1))   # z244..276
-    ball_jt = _U([housing, stud])
+    castle_nut = ME.hex_nut("M10", (bj[0], bj[1], bj[2] + 28), (0, 0, 1))
+    ball_jt = _U([housing, stud, castle_nut])
 
     # ARB drop-link tab on the forward arm
     sway_tab = _rbox(arb[0] - 16, arb[1] - 14, arb[2] - 11, 32, 28, 22, 5)

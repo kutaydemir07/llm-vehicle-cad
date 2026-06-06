@@ -188,7 +188,7 @@ def write_flags(flags: list[Flag], path: Path) -> None:
 def run_collision_gate(mode: str, threshold: float, out_dir: Path):
     if mode == "off":
         return []
-    from check_collisions_v3 import detect, load, save_csv
+    from vehiclecad.tools.check_collisions_v3 import detect, load, save_csv
 
     sub_parts, sub_bbox, major_bbox, parent_bbox = load()
     hits = detect(

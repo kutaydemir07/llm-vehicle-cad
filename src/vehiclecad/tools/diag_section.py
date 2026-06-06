@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from cadquery import Solid, Vector
 from vehiclecad.core.reference import common as C
-from vehiclecad.parts.body.structure import body as body_shell
+from vehiclecad.parts.body.structure import body as body_structure
 from vehiclecad.parts.exterior.detail import frontend, rearend
 from vehiclecad.vehicle import studio
 
@@ -20,7 +20,7 @@ OUT = str(_PROJECT_ROOT / "exports" / "screenshots" / "diag_section.png")
 
 def real_shell():
     """Reproduce body.py's actual shell (outer tool minus inner cavity)."""
-    return body_shell._panel_tool()
+    return body_structure._panel_tool()
 
 
 def section(parts, y=0.0):
