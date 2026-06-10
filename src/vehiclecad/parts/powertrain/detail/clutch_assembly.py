@@ -11,6 +11,7 @@ Collision-free:
 """
 from __future__ import annotations
 from vehiclecad.core.reference import common as C
+from vehiclecad.geometry import machine_elements as ME
 from vehiclecad.parts.powertrain.detail import layout as L
 
 _cyl  = C.cyl
@@ -25,24 +26,27 @@ def _flywheel():
 
     For cyl(r, h, base, (1,0,0)): base[1]=y_centre, base[2]=z_centre.
     """
-    x0 = L.ENGINE_REAR_X - 10
-    fw = _cyl(128, 22, (x0, L.CL_Y, L.CRANK_Z), (1, 0, 0))   # full disc
-    # ring gear outer band
-    rg = _cyl(132, 22, (x0, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
-         _cyl(126, 30, (x0 - 2, L.CL_Y, L.CRANK_Z), (1, 0, 0)))
+    # flywheel face starts BEHIND the 8 mm rear engine plate (plate x990..998)
+    x0 = L.ENGINE_REAR_X - 2
+    fw = _cyl(124, 22, (x0, L.CL_Y, L.CRANK_Z), (1, 0, 0))   # full disc
+    # centre bore: receives the pilot bearing, lets the input-shaft stub pass
+    fw = fw.cut(_cyl(17, 26, (x0 - 2, L.CL_Y, L.CRANK_Z), (1, 0, 0)))
+    # shrunk-on starter RING GEAR with real teeth (module ~2.7, 96 teeth)
+    rg = ME.ring_gear_band_x(129.0, 18, x0 + 2, L.CL_Y, L.CRANK_Z, teeth=96, depth=7.0)
     bolts = []
     for sy, sz in ((34, 28), (-34, 28), (34, -28), (-34, -28)):
-        bolts.append(_cyl(5.5, 8, (x0 + 18, sy, L.CRANK_Z + sz), (1, 0, 0)))
+        bolts.append(_cyl(5.5, 4, (x0 + 18, sy, L.CRANK_Z + sz), (1, 0, 0)))
     return _U([fw, rg] + bolts)
 
 
 def _pressure_plate():
-    """Clutch cover + pressure plate assembly."""
-    cover = _cyl(112, 20, (L.ENGINE_REAR_X + 20, L.CL_Y, L.CRANK_Z), (1, 0, 0))   # behind the disc
-    cover_inner = _cyl(60, 30, (L.ENGINE_REAR_X + 18, L.CL_Y, L.CRANK_Z), (1, 0, 0))
+    """Clutch cover + pressure plate assembly, stacked BEHIND the disc ring
+    (flywheel face 1020 -> disc ring to 1028 -> cover 1028..1048)."""
+    cover = _cyl(112, 20, (L.ENGINE_REAR_X + 28, L.CL_Y, L.CRANK_Z), (1, 0, 0))
+    cover_inner = _cyl(60, 30, (L.ENGINE_REAR_X + 26, L.CL_Y, L.CRANK_Z), (1, 0, 0))
     fingers = [
-        C.swept_tube([(L.ENGINE_REAR_X + 36, 0, L.CRANK_Z),
-                      (L.ENGINE_REAR_X + 26, y, L.CRANK_Z + z)], 3.5, cap=True)
+        C.swept_tube([(L.ENGINE_REAR_X + 44, 0, L.CRANK_Z),
+                      (L.ENGINE_REAR_X + 34, y, L.CRANK_Z + z)], 3.5, cap=True)
         for y, z in ((46, 18), (18, 46), (-18, 46), (-46, 18),
                      (-46, -18), (-18, -46), (18, -46), (46, -18))
     ]
@@ -50,19 +54,40 @@ def _pressure_plate():
 
 
 def _clutch_disc():
-    """Friction disc, seated against the flywheel rear face (x1012)."""
-    disc = _cyl(108, 8, (L.ENGINE_REAR_X + 12, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
-           _cyl(38,  12, (L.ENGINE_REAR_X + 11, L.CL_Y, L.CRANK_Z), (1, 0, 0)))
-    hub = _cyl(44, 22, (L.ENGINE_REAR_X + 12, L.CL_Y, L.CRANK_Z), (1, 0, 0))
-    return disc.fuse(hub)
+    """Sprung-hub friction disc: friction ring with radial relief slots, a
+    carrier flange with four damper-spring windows (springs visible in them),
+    and a splined hub bored for the r15 input shaft."""
+    x0 = L.ENGINE_REAR_X + 20            # ring face seats on the flywheel (x1020)
+    ax0 = (x0, L.CL_Y, L.CRANK_Z)
+    ax1 = (x0 + 1, L.CL_Y, L.CRANK_Z)
+    ring = _cyl(108, 8, ax0, (1, 0, 0)).cut(_cyl(72, 12, (x0 - 1, L.CL_Y, L.CRANK_Z), (1, 0, 0)))
+    for k in range(6):
+        slot = C.box(x0 - 2, L.CL_Y - 1.5, L.CRANK_Z + 74, 12, 3.0, 36)
+        ring = ring.cut(slot.rotate(ax0, ax1, k * 60.0))
+    flange = _cyl(74, 6, (x0 + 1, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
+             _cyl(34, 10, (x0, L.CL_Y, L.CRANK_Z), (1, 0, 0)))
+    springs = []
+    for k in range(4):
+        window = C.box(x0 - 2, L.CL_Y - 17, L.CRANK_Z + 40, 12, 34, 22)
+        flange = flange.cut(window.rotate(ax0, ax1, 45.0 + k * 90.0))
+        spring = _cyl(8, 30, (x0 + 4, L.CL_Y - 15, L.CRANK_Z + 51), (0, 1, 0))
+        springs.append(spring.rotate(ax0, ax1, 45.0 + k * 90.0))
+    hub = _cyl(40, 22, ax0, (1, 0, 0)).cut(_cyl(15, 26, (x0 - 1, L.CL_Y, L.CRANK_Z), (1, 0, 0)))
+    return _U([ring, flange, hub] + springs)
 
 
 def _release_bearing():
-    """Throw-out bearing sleeve, centred on the input shaft inside the bell."""
-    bearing = _cyl(44, 26, (L.TRANS_FRONT_X + 18, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
-        _cyl(22, 30, (L.TRANS_FRONT_X + 16, L.CL_Y, L.CRANK_Z), (1, 0, 0))
+    """Throw-out bearing sleeve, centred on the input shaft inside the bell.
+
+    The guide collar is BORED r17 so it slides over the r15 input shaft with a
+    2 mm running clearance, and the whole sleeve sits AFT of the shaft's
+    clutch splines (which end at x1042) on the plain journal."""
+    bearing = _cyl(44, 26, (L.TRANS_FRONT_X + 28, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
+        _cyl(22, 30, (L.TRANS_FRONT_X + 26, L.CL_Y, L.CRANK_Z), (1, 0, 0))
     )
-    collar = _cyl(28, 42, (L.TRANS_FRONT_X + 4, L.CL_Y, L.CRANK_Z), (1, 0, 0))
+    collar = _cyl(28, 40, (L.TRANS_FRONT_X + 26, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
+        _cyl(17, 44, (L.TRANS_FRONT_X + 24, L.CL_Y, L.CRANK_Z), (1, 0, 0))
+    )
     return bearing.fuse(collar)
 
 
@@ -81,9 +106,12 @@ def _clutch_fork():
 
 
 def _pilot_bearing():
-    """Small needle bearing seated concentrically in the crank/flywheel recess."""
-    bearing = _cyl(16, 8, (L.ENGINE_REAR_X + 24, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
-        _cyl(8, 10, (L.ENGINE_REAR_X + 23, L.CL_Y, L.CRANK_Z), (1, 0, 0))
+    """Small needle bearing seated concentrically in the crank/flywheel recess.
+
+    Seated INSIDE the flywheel centre bore (r17); its r15.5 bore is a slip fit
+    over the r15 input-shaft body that begins at x=TRANS_FRONT_X-28."""
+    bearing = _cyl(16, 8, (L.ENGINE_REAR_X + 6, L.CL_Y, L.CRANK_Z), (1, 0, 0)).cut(
+        _cyl(15.5, 12, (L.ENGINE_REAR_X + 5, L.CL_Y, L.CRANK_Z), (1, 0, 0))
     )
     return bearing
 

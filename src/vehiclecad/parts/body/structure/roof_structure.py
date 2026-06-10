@@ -22,16 +22,22 @@ COL     = C.STRUCT
 
 
 def _bow(x, crown_mm=8):
-    """Shallow arched bow at x, y= - 650, sitting under the roof skin."""
-    z_end  = 1318.0
-    z_mid  = z_end + crown_mm
-    path   = [(x, 650, z_end), (x, 0, z_mid), (x, -650, z_end)]
-    return C.swept_tube(path, 14, cap=True)
+    """Roof bow as the production part: an open-bottom hat CHANNEL (3 mm wall)
+    with weld feet at the rail ends -- not a solid bar."""
+    bow = _box(x - 14, -650, 1306, 28, 1300, 24).cut(
+        _box(x - 11, -647, 1300, 22, 1294, 27))
+    foot_l = C.rbox(x - 20, 632, 1298, 40, 26, 10, 3)
+    foot_r = C.rbox(x - 20, -658, 1298, 40, 26, 10, 3)
+    return C.U([bow, foot_l, foot_r])
 
 
 def _header(x):
-    """Straight lateral header tube, inboard and below the DLO top edge."""
-    return C.swept_tube([(x, 654, 1312), (x, -654, 1312)], 16, cap=True)
+    """Lateral header as a hollow closed box section with end weld tabs."""
+    hdr = _box(x - 16, -654, 1298, 32, 1308, 28).cut(
+        _box(x - 13, -651, 1301, 26, 1302, 22))
+    tab_l = C.rbox(x - 22, 636, 1294, 44, 24, 8, 3)
+    tab_r = C.rbox(x - 22, -660, 1294, 44, 24, 8, 3)
+    return C.U([hdr, tab_l, tab_r])
 
 
 def parts():

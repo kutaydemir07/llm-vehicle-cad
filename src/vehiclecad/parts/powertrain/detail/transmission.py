@@ -1,23 +1,26 @@
-"""ManualGearbox 265/5 five-speed manual transmission.
+"""ManualGearbox 265/5 five-speed manual transmission -- drawn as a REAL box.
 
-The ManualGearbox 265 is a compact 5-speed unit.  It is positioned inline on the
-centreline, bolted to the I4_Engine flywheel housing at the engine rear plane,
-with the tailshaft output mated to the propshaft front hardpoint.
+Gear-train engineering (the part a transmission lives or dies by):
 
-Dimensions (real ManualGearbox 265):
-  Length: ~400 mm (bell-housing face to tailshaft)
-  Width (widest): ~280 mm at the bell-housing
-  Height: ~240 mm
-
-CAD mating notes:
-  * bellhousing front flange is concentric with the clutch / crank axis.
-  * rear output flange is centred at POWERTRAIN["prop_front"].
-  * transmission mount pad is centred at POWERTRAIN["trans_mount"].
-  * the tail cone slopes from the clutch axis down to the propshaft axis, so the
-    gearbox, clutch, and propshaft are one continuous driveline chain.
-  * the casing is hollowed around the gear train and emits functional internals:
-    input shaft, layshaft, output shaft, five gear pairs, reverse idler, synchro
-    hubs, selector forks/rails, and bearings.
+  * Main (input/output) axis = crank axis (y0, z445).  Layshaft at
+    (y-34, z369.5) -> centre distance 82.8 mm.
+  * Module 2.3 throughout, tooth counts per pair sum to 72, so
+    pitch_r(main) + pitch_r(lay) = 1.15 * 72 = 82.8 mm = the centre distance:
+    every pair genuinely MESHES (tips overlap the opposing root zone by one
+    whole depth, flanks at the 20-degree pressure angle).
+      1st 50/22   2nd 45/27   3rd 40/32   4th 36/36   5th 32/40
+  * The output shaft is STRAIGHT and coaxial with the input (z445) -- the old
+    bent tube was physically impossible; the propshaft's guibo/U-joint takes
+    the down-angle (hardpoints trans_rear/prop_front now z445).
+  * Input shaft: pilot stub -> CLUTCH SPLINES AT THE FRONT (inside the disc
+    hub) -> front bearing journal -> rear counterbore that receives the output
+    shaft spigot (slip fit), exactly like the production layout.
+  * Bearings seat IN THE CASE WALLS with inner races matching the shaft
+    journals (input r15, output r14, lay r13).
+  * Reverse idler meshes the 1st lay gear (centre distance = pitch sum).
+  * Case: bolted bellhousing flange (8x M10 on PCD 150), ribbed walls, top
+    cover with 6x M6, magnetic drain plug + side fill plug, and two M10 mount
+    studs with nuts dropping through the crossmember saddle.
 """
 from __future__ import annotations
 import math
@@ -35,20 +38,23 @@ SHAFT_C = (0.62, 0.63, 0.66)
 SELECTOR_C = (0.34, 0.35, 0.38)
 BEARING_C = (0.56, 0.57, 0.60)
 
-MAIN_Y, MAIN_Z = 0.0, L.CRANK_Z
-LAY_Y, LAY_Z = -72.0, 394.0
-GEAR_XS = (1118.0, 1158.0, 1198.0, 1238.0, 1278.0)
+MAIN_Y, MAIN_Z = 0.0, L.CRANK_Z          # (0, 445)
+LAY_Y, LAY_Z = -34.0, 369.5              # centre distance to main = 82.8
+M_GEAR = 2.3                             # gear module (mm)
+# Gear stack packaged INSIDE the cavity (x1102..1292): five 22-wide pairs and
+# three 16-wide synchro hubs in the gaps, nothing buried in the case walls.
+GEAR_XS = (1104.0, 1146.0, 1172.0, 1214.0, 1240.0)
+GEAR_TEETH = ((50, 22), (45, 27), (40, 32), (36, 36), (32, 40))
 GEAR_WIDTH = 22.0
+HUB_XS = (1128.0, 1196.0, 1264.0)        # synchro hubs between the pairs
 
 
 def _manualgearbox_265():
-    """Bellhousing + main casing + tail cone, centred on the skeleton axes."""
-    prop_x, prop_y, prop_z = L.PROPSHAFT_FRONT
+    """Bellhousing + main casing + tail cone with REAL closure hardware."""
+    prop_x, prop_y, prop_z = L.PROPSHAFT_FRONT          # (1400, 0, 445)
     mount_x, mount_y, mount_z = L.GEARBOX_MOUNT
 
-    # Bellhousing: a shallow cast cone with a flat engine-side flange.  Its
-    # front face sits directly behind the clutch pack at x=1020 and shares the
-    # crank axis (y=0, z=445).
+    # Bellhousing: cast cone with a flat engine-side flange on the crank axis.
     bell = C.loft_circles([
         ((L.TRANS_FRONT_X, L.CL_Y, L.CRANK_Z), 145, (1, 0, 0)),
         ((1056,           L.CL_Y, L.CRANK_Z), 162, (1, 0, 0)),
@@ -64,29 +70,45 @@ def _manualgearbox_265():
         _cyl(50, 14, (L.TRANS_FRONT_X - 7, L.CL_Y, L.CRANK_Z), (1, 0, 0))
     )
     bell = bell.fuse(bell_mouth)
+    # bolted bellhousing joint: 8x M10 cap screws on PCD 150 into the engine
+    bell_bolts = ME.bolt_circle("M10", 8, 150.0, 22.0,
+                                (1014, L.CL_Y, L.CRANK_Z), (1, 0, 0),
+                                start_deg=22.5)
 
-    # Gearbox casing and ribs.  The main case is tight to the tunnel envelope but
-    # stays symmetric about the centreline.
-    main_case = _rbox(1090, -108, 344, 218, 216, 204, 14)
-    gear_cavity = _rbox(1102, -96, 374, 194, 188, 154, 10)
+    # Main case sized around the corrected gear train: the 5th lay gear tip
+    # reaches z321, so the case floor drops to z304 (the tunnel is open below).
+    main_case = _rbox(1090, -108, 304, 214, 216, 244, 14)
+    gear_cavity = _rbox(1102, -96, 316, 190, 188, 212, 10)
     shaft_bores = _U([
-        _cyl(26, 248, (1076, MAIN_Y, MAIN_Z), (1, 0, 0)),
-        _cyl(24, 248, (1076, LAY_Y, LAY_Z), (1, 0, 0)),
+        _cyl(27, 248, (1076, MAIN_Y, MAIN_Z), (1, 0, 0)),
+        _cyl(23, 248, (1076, LAY_Y, LAY_Z), (1, 0, 0)),
+        # reverse-idler shaft press bore in the front web
+        _cyl(8.5, 60, (1076, LAY_Y - 30.6, LAY_Z + 37.8), (1, 0, 0)),
+        # selector-rail guide bores through both webs
+        _cyl(5.5, 248, (1076, -34, 518), (1, 0, 0)),
+        _cyl(5.5, 248, (1076, 0, 518), (1, 0, 0)),
+        _cyl(5.5, 248, (1076, 34, 518), (1, 0, 0)),
     ])
     main_case = main_case.cut(gear_cavity).cut(shaft_bores)
     top_cover = _rbox(1120, -54, 548, 150, 108, 30, 6)
+    cover_bolts = _U([
+        ME.cap_screw("M6", 12, (x, y, 566), (0, 0, 1))
+        for x in (1132, 1194, 1256) for y in (-42, 42)
+    ])
     side_ribs = [
-        _rbox(1110 + i * 44, 104, 390, 10, 16, 118, 3) for i in range(4)
+        _rbox(1110 + i * 44, 104, 360, 10, 16, 148, 3) for i in range(4)
     ] + [
-        _rbox(1110 + i * 44, -120, 390, 10, 16, 118, 3) for i in range(4)
+        _rbox(1110 + i * 44, -120, 360, 10, 16, 148, 3) for i in range(4)
     ]
+    # service hardware: magnetic drain plug (bottom) + fill/level plug (side)
+    drain_plug = ME.cap_screw("M14", 12, (1180, -40, 316), (0, 0, -1))
+    fill_plug = ME.cap_screw("M14", 12, (1240, -96, 420), (0, -1, 0))
 
-    # Tail cone: mated to the propshaft front hardpoint at the rear.  The output
-    # flange is centred exactly on that hardpoint, eliminating the prior z offset.
+    # Tail cone: STRAIGHT on the main axis out to the output flange at z445.
     tail = C.loft_circles([
-        ((1296, L.CL_Y, 432), 80, (1, 0, 0)),
-        ((1360, L.CL_Y, 424), 58, (1, 0, 0)),
-        ((prop_x, prop_y, prop_z), 42, (1, 0, 0)),
+        ((1296, L.CL_Y, MAIN_Z), 80, (1, 0, 0)),
+        ((1352, L.CL_Y, MAIN_Z), 56, (1, 0, 0)),
+        ((prop_x - 9, prop_y, prop_z), 42, (1, 0, 0)),
     ], ruled=True)
     output_flange = _cyl(46, 18, (prop_x - 9, prop_y, prop_z), (1, 0, 0))
     pilot = _cyl(22, 34, (prop_x - 4, prop_y, prop_z), (1, 0, 0))
@@ -100,20 +122,29 @@ def _manualgearbox_265():
             (1, 0, 0),
         ))
 
-    # Shift tower and selector rod on the gearbox top, positioned between the
-    # tunnel opening and the tail without touching the propshaft line.
+    # Shift tower and selector rod on the gearbox top.
     shift_tower = _cyl(22, 70, (1242, 0, 566), (0, 0, 1))
     shift_boot = _cyl(36, 28, (1242, 0, 632), (0, 0, 1))
     selector_rod = _cyl(8, 214, (1168, 0, 604), (1, 0, 0))
 
-    # Rubber mount lands on the chassis crossmember and shares its hardpoint.
+    # Mount boss + pedestal web down to the crossmember saddle, with two M10
+    # studs+nuts dropping THROUGH the saddle plate (z320..338) -- a bolted
+    # joint, not parts hovering near each other.
     mount_pad = _rbox(mount_x - 46, mount_y - 62, mount_z - 24, 92, 124, 18, 6)
-    mount_boss = _cyl(18, 20, (mount_x - 10, mount_y, mount_z - 12), (1, 0, 0))
+    pedestal = _rbox(mount_x - 24, mount_y - 24, mount_z - 10, 48, 48, 36, 6)
+    mount_studs = _U([
+        ME.threaded_stud_with_nut("M10", 42, (mount_x - 18, mount_y, mount_z - 24), (0, 0, -1)),
+        ME.threaded_stud_with_nut("M10", 42, (mount_x + 18, mount_y, mount_z - 24), (0, 0, -1)),
+    ])
 
     gearbox = _U([
         bell,
+        bell_bolts,
         main_case,
         top_cover,
+        cover_bolts,
+        drain_plug,
+        fill_plug,
         tail,
         output_flange,
         pilot,
@@ -121,112 +152,134 @@ def _manualgearbox_265():
         shift_boot,
         selector_rod,
         mount_pad,
-        mount_boss,
+        pedestal,
+        mount_studs,
     ] + side_ribs)
+    # the tail housing, output flange and pilot are BORED r19 so the output
+    # shaft (r14, spline r17) turns inside them -- no shaft through solid iron
+    gearbox = gearbox.cut(_cyl(19, 152, (1286, L.CL_Y, MAIN_Z), (1, 0, 0)))
     return gearbox.cut(_U(guibo_clearance))
 
 
-def _shaft_with_splines(base_x: float, length: float, y: float, z: float, radius: float, name: str):
-    shaft = _cyl(radius, length, (base_x, y, z), (1, 0, 0))
+def _input_shaft():
+    """Input shaft drawn like the production part: r10 pilot stub at the nose,
+    CLUTCH SPLINES at the front (where the disc hub actually rides, x1000..
+    1044), plain r15 journal back to the front bearing, and a rear counterbore
+    that receives the output-shaft spigot as a slip fit."""
+    shaft = _cyl(15, 148, (992, MAIN_Y, MAIN_Z), (1, 0, 0))
+    pilot = _cyl(10, 34, (962, MAIN_Y, MAIN_Z), (1, 0, 0))
+    # splines span exactly the clutch-disc hub (x1012..1034), clear of the
+    # pilot bearing (ends x1006) and the release-bearing collar (from x1046)
     splines = []
     for i in range(8):
-        a = i * 45.0
-        spline = _rbox(base_x + length - 54, y - 2.0, z + radius - 0.5, 48, 4, 4, 1)
-        splines.append(spline.rotate((base_x, y, z), (base_x + 1, y, z), a))
-    return _U([shaft] + splines), SHAFT_C, name
-
-
-def _input_shaft():
-    shaft, color, name = _shaft_with_splines(
-        L.TRANS_FRONT_X - 28,
-        172,
-        MAIN_Y,
-        MAIN_Z,
-        15,
-        "PRT_ManualGearbox_265_Input_Shaft",
-    )
-    pilot = _cyl(10, 34, (L.TRANS_FRONT_X - 58, MAIN_Y, MAIN_Z), (1, 0, 0))
-    return shaft.fuse(pilot), color, name
+        sp = _rbox(1021, MAIN_Y - 2.0, MAIN_Z + 15 - 0.5, 25, 4, 4, 1)
+        splines.append(sp.rotate((992, MAIN_Y, MAIN_Z), (993, MAIN_Y, MAIN_Z), i * 45.0))
+    shaft = _U([shaft, pilot] + splines)
+    shaft = shaft.cut(_cyl(14.5, 18, (1124, MAIN_Y, MAIN_Z), (1, 0, 0)))
+    return shaft, SHAFT_C, "PRT_ManualGearbox_265_Input_Shaft"
 
 
 def _layshaft():
-    shaft, color, name = _shaft_with_splines(1082, 236, LAY_Y, LAY_Z, 13, "PRT_ManualGearbox_265_Layshaft")
-    return shaft, color, name
+    """Layshaft on its own axis with drive splines under the gear cluster
+    (spline tips r16.5 engage the gears' r17 bores as a designed fit)."""
+    shaft = _cyl(13, 222, (1082, LAY_Y, LAY_Z), (1, 0, 0))
+    splines = []
+    for i in range(8):
+        sp = _rbox(1104, LAY_Y - 2.0, LAY_Z + 13 - 0.5, 158, 4, 4, 1)
+        splines.append(sp.rotate((1082, LAY_Y, LAY_Z), (1083, LAY_Y, LAY_Z), i * 45.0))
+    return _U([shaft] + splines), SHAFT_C, "PRT_ManualGearbox_265_Layshaft"
 
 
 def _output_shaft():
-    shaft = C.tube_path([
-        (1160, MAIN_Y, MAIN_Z),
-        (1288, MAIN_Y, 438),
-        L.PROPSHAFT_FRONT,
-    ], 14)
-    spline = _cyl(17, 46, (L.PROPSHAFT_FRONT[0] - 30, MAIN_Y, L.PROPSHAFT_FRONT[2]), (1, 0, 0))
-    return shaft.fuse(spline), SHAFT_C, "PRT_ManualGearbox_265_Output_Shaft"
+    """STRAIGHT output shaft on the main axis: front spigot into the input's
+    counterbore, gear journals, flange splines, output flange at z445."""
+    pf = L.PROPSHAFT_FRONT
+    spigot = _cyl(14, 16, (1126, MAIN_Y, MAIN_Z), (1, 0, 0))
+    shaft = _cyl(14, pf[0] - 1142 + 9, (1142, MAIN_Y, MAIN_Z), (1, 0, 0))
+    spline = _cyl(17, 46, (pf[0] - 56, MAIN_Y, MAIN_Z), (1, 0, 0))
+    return _U([spigot, shaft, spline]), SHAFT_C, "PRT_ManualGearbox_265_Output_Shaft"
 
 
-def _gear_pair(index: int, base_x: float, main_outer: float, lay_outer: float, main_teeth: int, lay_teeth: int):
-    main = ME.spur_gear_x(main_outer - 6.0, main_outer, GEAR_WIDTH, base_x, MAIN_Y, MAIN_Z, main_teeth, bore_r=15)
-    lay = ME.spur_gear_x(lay_outer - 5.5, lay_outer, GEAR_WIDTH, base_x, LAY_Y, LAY_Z, lay_teeth, bore_r=13, clocking_deg=180.0 / lay_teeth)
-    thrust_washer_l = ME.washer(main_outer - 2, 17, 2, (base_x - 2.0, MAIN_Y, MAIN_Z), (1, 0, 0))
-    thrust_washer_r = ME.washer(lay_outer - 2, 15, 2, (base_x + GEAR_WIDTH, LAY_Y, LAY_Z), (1, 0, 0))
+def _gear_pair(index: int, base_x: float, z_main: int, z_lay: int):
+    """One speed pair with EXACT meshing: module 2.3, pitch radii sum to the
+    82.8 mm centre distance, lay gear clocked half a pitch so the teeth
+    interleave, built with 0.6 mm working BACKLASH (lay gear addendum pulled
+    in) so the engaged flanks never boolean-interfere."""
+    pm = 0.5 * M_GEAR * z_main
+    pl = 0.5 * M_GEAR * z_lay - 0.6
+    main = ME.spur_gear_x(pm - 1.25 * M_GEAR, pm + M_GEAR, GEAR_WIDTH,
+                          base_x, MAIN_Y, MAIN_Z, z_main, bore_r=15)
+    lay = ME.spur_gear_x(pl - 1.25 * M_GEAR, pl + M_GEAR, GEAR_WIDTH,
+                         base_x, LAY_Y, LAY_Z, z_lay, bore_r=17,
+                         clocking_deg=180.0 / z_lay)
+    thrust_washer_l = ME.washer(pm - 4, 17, 2, (base_x - 2.0, MAIN_Y, MAIN_Z), (1, 0, 0))
+    thrust_washer_r = ME.washer(pl - 4, 15, 2, (base_x + GEAR_WIDTH, LAY_Y, LAY_Z), (1, 0, 0))
     return _U([main, lay, thrust_washer_l, thrust_washer_r]), GEAR_C, f"PRT_ManualGearbox_265_Gear_Pair_{index}"
 
 
 def _gear_pairs():
-    dims = (
-        (1, GEAR_XS[0], 50, 38, 34, 22),
-        (2, GEAR_XS[1], 46, 42, 32, 26),
-        (3, GEAR_XS[2], 42, 46, 30, 30),
-        (4, GEAR_XS[3], 39, 49, 28, 34),
-        (5, GEAR_XS[4], 36, 52, 24, 36),
-    )
-    return [_gear_pair(*item) for item in dims]
+    return [
+        _gear_pair(i + 1, GEAR_XS[i], GEAR_TEETH[i][0], GEAR_TEETH[i][1])
+        for i in range(5)
+    ]
 
 
 def _reverse_idler():
-    idler_y = -37.0
-    idler_z = 366.0
-    gear = ME.spur_gear_x(28, 34, 18, 1104, idler_y, idler_z, 20, bore_r=8, clocking_deg=9)
-    shaft = _cyl(8, 44, (1092, idler_y, idler_z), (1, 0, 0))
-    fork_pad = _rbox(1110, idler_y - 22, idler_z + 30, 24, 44, 8, 2)
+    """Reverse idler on its own pressed-in shaft, MESHING the 1st lay gear:
+    centre distance = idler pitch (23.0) + lay-1st pitch (25.3) = 48.3."""
+    z_id = 20
+    pi_r = 0.5 * M_GEAR * z_id - 0.6                 # 23.0 less 0.6 backlash
+    # place on the circle of radius 48.3 around the lay axis
+    iy = LAY_Y - 30.6
+    iz = LAY_Z + 37.8
+    gear = ME.spur_gear_x(pi_r - 1.25 * M_GEAR, pi_r + M_GEAR, 18, 1106, iy, iz,
+                          z_id, bore_r=8, clocking_deg=9)
+    shaft = _cyl(8, 44, (1094, iy, iz), (1, 0, 0))
+    fork_pad = _rbox(1112, iy - 22, iz + 26, 24, 44, 8, 2)
     return _U([gear, shaft, fork_pad]), GEAR_C, "PRT_ManualGearbox_265_Reverse_Idler_Gear"
 
 
 def _synchro_hubs():
     hubs = []
-    for base_x in (1140.0, 1218.0, 1296.0):
-        hubs.append(ME.dog_clutch_ring_x(31, 17, 16, base_x, MAIN_Y, MAIN_Z, dogs=6))
+    for base_x in HUB_XS:
+        hubs.append(ME.dog_clutch_ring_x(34, 14.5, 16, base_x, MAIN_Y, MAIN_Z, dogs=6))
     return _U(hubs), GEAR_C, "PRT_ManualGearbox_265_Synchro_Hubs"
 
 
 def _selector_rails_forks():
+    """Three rails guided in the case walls; each fork drops from its rail and
+    its prongs straddle the matching synchro sleeve (HUB_XS alignment)."""
     rails = [
-        _cyl(5, 220, (1092, -34, 526), (1, 0, 0)),
-        _cyl(5, 220, (1092, 0, 526), (1, 0, 0)),
-        _cyl(5, 220, (1092, 34, 526), (1, 0, 0)),
+        _cyl(5, 212, (1096, -34, 518), (1, 0, 0)),
+        _cyl(5, 212, (1096, 0, 518), (1, 0, 0)),
+        _cyl(5, 212, (1096, 34, 518), (1, 0, 0)),
     ]
     forks = []
-    for x, y in ((1148, -34), (1226, 0), (1304, 34)):
-        neck = C.swept_tube([(x, y, 526), (x, y * 0.35, 494), (x, 0, 476)], 5, cap=True)
+    for (hx, ry) in zip(HUB_XS, (-34, 0, 34)):
+        x = hx + 8.0                                  # fork centred on the hub
+        neck = C.swept_tube([(x, ry, 518), (x, ry * 0.35, 496), (x, 0, 482)], 5, cap=True)
+        # prongs straddle the sleeve OUTSIDE its r34 outer diameter
         prongs = [
-            _rbox(x - 5, -22, 455, 10, 8, 44, 2),
-            _rbox(x - 5, 14, 455, 10, 8, 44, 2),
+            _rbox(x - 5, -44, 452, 10, 8, 44, 2),
+            _rbox(x - 5, 36, 452, 10, 8, 44, 2),
         ]
         forks.append(_U([neck] + prongs))
     detent_balls = [
-        C.cyl(6, 4, (x, y, 534), (0, 0, 1))
-        for x in (1122, 1190, 1260)
+        C.cyl(6, 4, (x, y, 521), (0, 0, 1))
+        for x in (1122, 1190, 1258)
         for y in (-34, 0, 34)
     ]
     return _U(rails + forks + detent_balls), SELECTOR_C, "PRT_ManualGearbox_265_Selector_Rails_Forks"
 
 
 def _bearing_set():
+    """Bearings seated in the case-wall bores; inner races MATCH the shaft
+    journals (input r15, output r14, layshaft r13 both ends)."""
     bearings = [
-        ME.radial_ball_bearing(25, 12, 12, (1088, MAIN_Y, MAIN_Z), (1, 0, 0), ball_count=10),
-        ME.radial_ball_bearing(24, 11, 12, (1292, MAIN_Y, 438), (1, 0, 0), ball_count=10),
-        ME.radial_ball_bearing(22, 10, 12, (1088, LAY_Y, LAY_Z), (1, 0, 0), ball_count=9),
-        ME.radial_ball_bearing(22, 10, 12, (1298, LAY_Y, LAY_Z), (1, 0, 0), ball_count=9),
+        ME.radial_ball_bearing(26, 15, 12, (1088, MAIN_Y, MAIN_Z), (1, 0, 0), ball_count=10),
+        ME.radial_ball_bearing(26, 14, 12, (1292, MAIN_Y, MAIN_Z), (1, 0, 0), ball_count=10),
+        ME.radial_ball_bearing(22, 13, 12, (1088, LAY_Y, LAY_Z), (1, 0, 0), ball_count=9),
+        ME.radial_ball_bearing(22, 13, 12, (1292, LAY_Y, LAY_Z), (1, 0, 0), ball_count=9),
     ]
     return _U(bearings), BEARING_C, "PRT_ManualGearbox_265_Bearing_Set"
 
@@ -240,4 +293,3 @@ def parts():
     out.append(_selector_rails_forks())
     out.append(_bearing_set())
     return out
-

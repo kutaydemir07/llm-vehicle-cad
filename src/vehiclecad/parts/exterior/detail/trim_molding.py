@@ -34,36 +34,49 @@ def _b_pillars():
     for s in (1, -1):
         side = "L" if s > 0 else "R"
         y0 = 718.0 if s > 0 else -734.0
-        out.append((C.box(2470, y0, 1024, 70, 16, 312),
+        out.append((C.rbox(2470, y0, 1024, 70, 16, 312, 5),
                     C.BLACK, f"b_pillar_cover_{side}"))
     return out
 
 
 def _beltline_trim():
-    """Thin black DLO trim along the base of the side glass."""
+    """Thin black DLO trim along the base of the side glass.
+
+    One moulding per side in two seated segments, each clipped onto ITS panel:
+    the door segment rides the door's beltline channel (outer face |y|=812)
+    and the quarter segment sits just above the body's beltline shoulder
+    (which bulges to |y|~802 at z1014..1016)."""
     out = []
     for s in (1, -1):
         side = "L" if s > 0 else "R"
-        y0 = 758.0 if s > 0 else -770.0
-        out.append((C.box(1640, y0, 1014, 1280, 12, 12),
-                    C.TRIM_BLK, f"dlo_belt_{side}"))
+        door_seg = C.rbox(1640, 813.0, 1014, 838, 12, 12, 4)
+        qtr_seg = C.rbox(2487, 795.0, 1017, 433, 12, 12, 4)
+        strip = C.U([door_seg, qtr_seg])
+        if s < 0:
+            strip = C.mirror_y(strip)
+        out.append((strip, C.TRIM_BLK, f"dlo_belt_{side}"))
     return out
 
 
 def _drip_rails():
     """Roof drip rails along each side of the greenhouse."""
     out = []
+    # clipped onto the gutter seam just below the roof-edge band (z>=1342)
     for s in (1, -1):
         side = "L" if s > 0 else "R"
-        y0 = 723.0 if s > 0 else -735.0
-        out.append((C.rbox(1820, y0, 1348, 920, 12, 14, 4),
+        y0 = 722.0 if s > 0 else -734.0
+        out.append((C.rbox(1820, y0, 1332, 920, 12, 14, 4),
                     C.BLACK, f"drip_rail_{side}"))
     return out
 
 
 def _cowl_vent():
-    """Black slatted cowl/plenum grille at the base of the windscreen."""
-    out = [(C.box(1502, -380, 996, 26, 760, 20), C.BLACK, "cowl_vent_back")]
+    """Black slatted cowl/plenum grille seated in the cowl panel's plenum slot
+    (body.py cuts the matching opening at x1496..1532)."""
+    back = C.rbox(1502, -380, 996, 26, 760, 20, 5)
+    for k in range(3):
+        back = back.cut(C.box(1500, -300 + k * 280, 1000, 8, 40, 10))   # drains
+    out = [(back, C.BLACK, "cowl_vent_back")]
     slats = [C.box(1506, -376, 999 + k * 5, 20, 752, 2) for k in range(4)]
     out.append((C.U(slats), C.TRIM_BLK, "cowl_vent_slats"))
     return out

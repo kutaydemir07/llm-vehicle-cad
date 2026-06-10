@@ -106,14 +106,22 @@ def _firewall_stiffener_left():
 
 
 def _engine_mount_rubbers():
-    """Rubber engine-mount bushings filling the gap between each weld-on bracket
-    shelf and the block's mount pad  -  so the motor sits ON its mounts, not over a
-    void.  Centred on the engine-mount hardpoints."""
+    """Hydromount-style rubber engine mounts: hourglass rubber element with an
+    interleaf plate, top/bottom load washers and the M12 stud+nut clamping the
+    block pad to the bracket shelf -- a complete bolted joint."""
     out = []
     for tag, nm in (("engine_mount_L", "L"), ("engine_mount_R", "R")):
         mx, my, mz = PT[tag]
+        body = C.loft_circles([
+            ((mx, my, mz - 50), 26, (0, 0, 1)),
+            ((mx, my, mz - 41), 19, (0, 0, 1)),
+            ((mx, my, mz - 36), 19, (0, 0, 1)),
+            ((mx, my, mz - 22), 26, (0, 0, 1)),
+        ])
+        interleaf = ME.washer(29, 12, 2.5, (mx, my, mz - 39.5), (0, 0, 1))
         rub = _U([
-            _cyl(26, 28, (mx, my, mz - 50), (0, 0, 1)),
+            body,
+            interleaf,
             ME.washer(34, 12, 4, (mx, my, mz - 56), (0, 0, 1)),
             ME.washer(32, 12, 4, (mx, my, mz - 22), (0, 0, 1)),
             ME.threaded_stud_with_nut("M12", 52, (mx, my, mz - 66), (0, 0, 1)),
@@ -123,16 +131,13 @@ def _engine_mount_rubbers():
 
 
 def _trans_mount_rubber():
-    """Rubber gearbox mount sitting on the EXISTING transmission crossmember
-    (PRT_Trans_Crossmember in crossmembers.py) under the gearbox tail  -  fills the
-    void so the gearbox is carried by its mount rather than floating."""
+    """Rubber gearbox mount SANDWICHED between the crossmember saddle (top face
+    z338) and the gearbox mount pad (underside z346): two bonded pucks whose
+    bores pass the gearbox's M10 studs -- the joint is closed, nothing floats."""
     tm = PT["trans_mount"]                       # (1350, 0, 370)
     pucks = []
-    for y in (190, -190):
-        pucks.extend([
-            ME.bonded_bushing(24, 8, 16, (tm[0], y, 354), (0, 0, 1)),
-            ME.threaded_stud_with_nut("M8", 20, (tm[0], y, 368), (0, 0, 1)),
-        ])
+    for x in (tm[0] - 18, tm[0] + 18):
+        pucks.append(ME.bonded_bushing(16, 5.5, 8, (x, tm[1], 338.5), (0, 0, 1)))
     rub = _U(pucks)
     return [(rub, C.RUBBER, "PRT_Trans_Mount_Rubber")]
 

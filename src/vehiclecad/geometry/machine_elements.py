@@ -113,6 +113,19 @@ def hex_nut(fastener: MetricFastener | str, base, axis=(0, 0, 1)) -> Solid:
     return nut.cut(C.cyl(fs.clearance_r, fs.nut_h + 2.0, _point(base, axis, -1.0), axis))
 
 
+def _thread_bands(fs: MetricFastener, base, axis, start: float, end: float) -> list:
+    """Lightweight metric-thread representation: raised crest rings at the
+    nominal pitch over [start, end] along the shank.  Reads as a rolled thread
+    without the boolean cost of a true helix on hundreds of fasteners."""
+    pitch = max(1.0, fs.shank_r * 0.30)
+    bands = []
+    t = start
+    while t < end - pitch * 0.3:
+        bands.append(C.cyl(fs.shank_r * 1.09, pitch * 0.32, _point(base, axis, t), axis))
+        t += pitch
+    return bands
+
+
 def cap_screw(
     fastener: MetricFastener | str,
     grip_length: float,
@@ -120,9 +133,11 @@ def cap_screw(
     axis=(0, 0, 1),
     washer_under_head: bool = True,
 ) -> Solid:
-    """Hex-head cap screw with shank along ``axis`` and head at the far end."""
+    """Hex-head cap screw with shank along ``axis`` and head at the far end.
+    The free third of the shank carries thread crests."""
     fs = spec(fastener) if isinstance(fastener, str) else fastener
     parts = [C.cyl(fs.shank_r, grip_length, base, axis)]
+    parts += _thread_bands(fs, base, axis, 0.0, grip_length * 0.4)
     if washer_under_head:
         parts.append(washer(fs.washer_od / 2.0, fs.clearance_r, fs.washer_t, _point(base, axis, grip_length), axis))
         head_base = _point(base, axis, grip_length + fs.washer_t)
@@ -141,12 +156,14 @@ def through_bolt(
     """Bolt, two washers, and nut clamping a joint of ``grip_length``."""
     fs = spec(fastener) if isinstance(fastener, str) else fastener
     parts = [
-        C.cyl(fs.shank_r, grip_length, base, axis),
+        C.cyl(fs.shank_r, grip_length + fs.nut_h + 2.0, base, axis),
         washer(fs.washer_od / 2.0, fs.clearance_r, fs.washer_t, base, axis),
         hex_prism(fs.head_r, fs.head_h, _point(base, axis, -fs.head_h), axis),
         washer(fs.washer_od / 2.0, fs.clearance_r, fs.washer_t, _point(base, axis, grip_length - fs.washer_t), axis),
         hex_nut(fs, _point(base, axis, grip_length), axis),
     ]
+    # thread crests on the nut end (the engaged + protruding length)
+    parts += _thread_bands(fs, base, axis, grip_length * 0.62, grip_length + fs.nut_h + 2.0)
     return C.U(parts)
 
 
@@ -234,6 +251,38 @@ def clevis_pin(pin_r: float, grip_length: float, base, axis=(0, 0, 1)) -> Solid:
     return C.U(parts)
 
 
+def _tooth_profile_prism(
+    root_r: float,
+    tip_r: float,
+    pitch_r: float,
+    circ_pitch: float,
+    base_x: float,
+    centre_y: float,
+    centre_z: float,
+    width: float,
+) -> Solid:
+    """ONE gear tooth as a prism along X with the correct rack-form trapezoid:
+    flanks at the 20-degree pressure angle, tooth thickness = half the
+    circular pitch at the pitch circle, tip narrower than root, with tip and
+    root reliefs.  This is the standard straight-flank approximation of the
+    involute -- meshing geometry (module, centre distance, tip/root) is exact."""
+    half_pitch_t = circ_pitch * 0.25          # half tooth thickness at pitch r
+    tan_pa = math.tan(math.radians(20.0))
+    half_root = half_pitch_t + (pitch_r - root_r) * tan_pa
+    half_tip = max(0.18 * half_pitch_t, half_pitch_t - (tip_r - pitch_r) * tan_pa)
+    poly = [
+        (centre_y - half_root, centre_z + root_r - 0.4),
+        (centre_y - half_tip, centre_z + tip_r - 0.15 * (tip_r - root_r)),
+        (centre_y - 0.6 * half_tip, centre_z + tip_r),
+        (centre_y + 0.6 * half_tip, centre_z + tip_r),
+        (centre_y + half_tip, centre_z + tip_r - 0.15 * (tip_r - root_r)),
+        (centre_y + half_root, centre_z + root_r - 0.4),
+    ]
+    pts = [Vector(base_x, y, z) for y, z in poly]
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon(pts + [pts[0]]))
+    return Solid.extrudeLinear(face, Vector(width, 0, 0))
+
+
 def spur_gear_x(
     root_r: float,
     outer_r: float,
@@ -245,32 +294,107 @@ def spur_gear_x(
     bore_r: float = 10.0,
     clocking_deg: float = 0.0,
 ) -> Solid:
-    """Simple external spur gear on the vehicle X axis.
+    """External spur gear on the vehicle X axis with REAL tooth form.
 
-    It is intentionally lightweight: root cylinder plus individual raised teeth
-    and a bored centre.  The teeth make gear trains visually/mechanically legible
-    without the cost of involute tooth surfaces for every audit build.
-    """
+    The tooth flanks are straight 20-degree pressure-angle facets on the
+    correct module: pitch radius sits between ``root_r`` and ``outer_r`` per
+    the standard addendum/dedendum split (a=m, d=1.25m), tooth thickness is
+    half the circular pitch, and the tip is relieved.  Two meshing gears built
+    with this helper at centre distance = sum of pitch radii engage properly."""
+    teeth = max(6, int(teeth))
+    # standard proportions: whole depth = 2.25 m -> m from the radial depth
+    module = max(0.6, (outer_r - root_r) / 2.25)
+    pitch_r = root_r + 1.25 * module
+    circ_pitch = 2.0 * math.pi * pitch_r / teeth
     gear = C.cyl(root_r, width, (base_x, centre_y, centre_z), (1, 0, 0)).cut(
         C.cyl(bore_r, width + 2.0, (base_x - 1.0, centre_y, centre_z), (1, 0, 0))
     )
-    tooth_h = max(1.0, outer_r - root_r)
-    pitch = 2.0 * math.pi * outer_r / max(1, teeth)
-    tooth_w = min(pitch * 0.45, tooth_h * 1.8)
+    tooth = _tooth_profile_prism(root_r, outer_r, pitch_r, circ_pitch,
+                                 base_x, centre_y, centre_z, width)
+    teeth_solids = [
+        tooth.rotate((base_x, centre_y, centre_z), (base_x + 1, centre_y, centre_z),
+                     clocking_deg + i * 360.0 / teeth)
+        for i in range(teeth)
+    ]
+    return C.U([gear] + teeth_solids)
+
+
+def bolt_circle(
+    fastener: MetricFastener | str,
+    count: int,
+    pcd_r: float,
+    grip_length: float,
+    centre,
+    axis=(0, 0, 1),
+    start_deg: float = 0.0,
+) -> Solid:
+    """``count`` cap screws on a pitch-circle around ``axis`` through ``centre``
+    -- the standard representation of a bolted flange joint."""
+    u, v, w = _basis(axis)
+    c = np.array(centre, dtype=float)
+    screws = []
+    for i in range(max(1, count)):
+        a = math.radians(start_deg) + 2.0 * math.pi * i / max(1, count)
+        p = c + u * (pcd_r * math.cos(a)) + v * (pcd_r * math.sin(a))
+        screws.append(cap_screw(fastener, grip_length, tuple(p), axis))
+    return C.U(screws)
+
+
+def ring_gear_band_x(
+    pitch_r: float,
+    width: float,
+    base_x: float,
+    centre_y: float,
+    centre_z: float,
+    teeth: int,
+    depth: float = 6.0,
+) -> Solid:
+    """External ring-gear band (e.g. flywheel starter ring) about the X axis:
+    a band with proper trapezoidal teeth standing on its rim."""
+    root_r = pitch_r - 0.55 * depth
+    tip_r = pitch_r + 0.45 * depth
+    band = C.cyl(root_r, width, (base_x, centre_y, centre_z), (1, 0, 0)).cut(
+        C.cyl(root_r - depth, width + 2.0, (base_x - 1.0, centre_y, centre_z), (1, 0, 0))
+    )
+    circ_pitch = 2.0 * math.pi * pitch_r / teeth
+    tooth = _tooth_profile_prism(root_r, tip_r, pitch_r, circ_pitch,
+                                 base_x, centre_y, centre_z, width)
+    teeth_solids = [
+        tooth.rotate((base_x, centre_y, centre_z), (base_x + 1, centre_y, centre_z),
+                     i * 360.0 / teeth)
+        for i in range(teeth)
+    ]
+    return C.U([band] + teeth_solids)
+
+
+def bevel_ring_gear(
+    pitch_r: float,
+    face_w: float,
+    centre,
+    axis=(0, 0, 1),
+    teeth: int = 41,
+    cone_deg: float = 45.0,
+) -> Solid:
+    """Hypoid/bevel ring gear: a conical face ring carrying radial teeth -- the
+    differential crown wheel.  Teeth are wedge facets on the cone face at the
+    correct angular pitch."""
+    u, v, w = _basis(axis)
+    c = np.array(centre, dtype=float)
+    inner_r = pitch_r - face_w
+    ring = C.cyl(pitch_r, face_w * 0.55, tuple(c), tuple(w)).cut(
+        C.cyl(inner_r, face_w * 0.55 + 2.0, tuple(c - w), tuple(w))
+    )
+    tan_c = math.tan(math.radians(cone_deg))
+    tooth_h = 0.16 * face_w
     teeth_solids = []
     for i in range(teeth):
-        angle = clocking_deg + i * 360.0 / teeth
-        tooth = C.rbox(
-            base_x,
-            centre_y - tooth_w / 2.0,
-            centre_z + root_r - 0.3,
-            width,
-            tooth_w,
-            tooth_h + 0.6,
-            min(1.5, tooth_w * 0.25),
-        )
-        teeth_solids.append(tooth.rotate((base_x, centre_y, centre_z), (base_x + 1, centre_y, centre_z), angle))
-    return C.U([gear] + teeth_solids)
+        a = 2.0 * math.pi * i / teeth
+        rdir = u * math.cos(a) + v * math.sin(a)
+        p0 = c + rdir * inner_r + w * (face_w * 0.55)
+        p1 = c + rdir * pitch_r + w * (face_w * 0.55 - (pitch_r - inner_r) * tan_c * 0.25)
+        seg = C.swept_tube([tuple(p0), tuple(p1)], tooth_h, cap=False)
+        teeth_solids.append(seg)
+    return C.U([ring] + teeth_solids)
 
 
 def dog_clutch_ring_x(

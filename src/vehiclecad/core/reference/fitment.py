@@ -228,11 +228,18 @@ ALLOWED_INTERFACES = (
     #    and the gearbox bellhousing sits against the firewall plane.
     InterfaceRule(
         ("PRT_Propshaft|PRT_ManualGearbox|PRT_Driveshaft|PRT_Half_Shaft|"
-         "PRT_Rear_LSD|PRT_Differential|PRT_Diff",),
+         "PRT_Rear_LSD|PRT_Differential|PRT_Diff|PRT_Guibo",),
         ("PRT_Floor_Carpet|PRT_Headliner|PRT_Rear_Bench|PRT_Rear_Seat|"
          "PRT_Centre_Console|PRT_Floorpan|PRT_Trans_Tunnel|PRT_Pedal_Box|"
          "PRT_HVAC|PRT_Heater|PRT_Handbrake|PRT_Parcel_Shelf",),
         "driveline routed inside the transmission tunnel / against the firewall",
+    ),
+    #  -  body isolator mounts bolt the floor structure DOWN ONTO the frame
+    #    rails: the bushing/bolt stack intentionally shares the rail bore.
+    InterfaceRule(
+        ("PRT_Body_Mount",),
+        ("PRT_Frame_Rail|PRT_Rocker|PRT_Floorpan",),
+        "body isolator bolted between floor structure and frame rail",
     ),
     #  -  interior trim panels clip onto the body pillars, sills and roof.
     InterfaceRule(

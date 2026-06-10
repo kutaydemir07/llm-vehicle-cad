@@ -66,7 +66,36 @@ def _panel_tool():
     tool = _union(tool, _end_closure_caps(frontend.body_cutters(), rearend.body_cutters()))
     tool = _union(tool, _aperture_backing_caps())
     tool = tool.cut(C.box(1560, -772, 1000, 1660, 1544, 40))
+    tool = tool.cut(_underbody_reliefs())
+    tool = tool.cut(_cowl_plenum_slot())
     return tool
+
+
+def _cowl_plenum_slot():
+    """Opening in the cowl top for the slatted plenum grille (trim_molding's
+    cowl_vent sits IN this slot) plus the two wiper-pivot notches."""
+    slot = C.box(1496, -384, 992, 36, 768, 38)
+    notches = [C.box(1496, ypiv - 24, 1000, 70, 48, 34) for ypiv in (250.0, -150.0)]
+    return C.U([slot] + notches)
+
+
+def _underbody_reliefs():
+    """Stamped underbody clearances for the exhaust run -- the production floor
+    carries exactly these reliefs: the full-length exhaust channel beside the
+    tunnel (downpipe drop, mid pipe, muffler recess to z362 over the muffler
+    top 348) and the twin tip cut-outs through the rear valance face."""
+    downpipe = C.box(1050, -344, 136, 420, 252, 170)    # downpipe drop zone
+    channel = C.box(1450, -336, 136, 1940, 244, 110)    # mid-pipe channel
+    mid_muff = C.box(3380, -392, 136, 740, 270, 226)    # muffler recess
+    tips = C.box(4260, -380, 206, 200, 168, 92)         # valance tip cut-outs
+    # lateral channel where the rear ARB swings under the floor (x3461..3483)
+    arb_channel = C.box(3448, -484, 136, 50, 968, 70)
+    # open suspension bays: the rear subframe bay and the front ARB sweep are
+    # not skinned over on a production underbody
+    subframe_bay = C.box(2865, -552, 150, 440, 1104, 190)
+    front_arb_channel = C.box(610, -400, 106, 260, 800, 96)
+    return C.U([downpipe, channel, mid_muff, tips, arb_channel,
+                subframe_bay, front_arb_channel])
 
 
 def _end_closure_caps(front_cutters, rear_cutters):
@@ -122,16 +151,23 @@ def _compound_with(shape, additions):
 
 
 def _augment_body_parts(parts):
-    """Attach beltline fillers to existing atomic body panel names."""
+    """Attach beltline fillers to existing atomic body panel names.
+
+    Fillers are relieved of the closure shut regions and the cowl plenum slot
+    so they never overlap the door/hood panels or the vent grille."""
+    door_l_outer = C.box(1505, 0, 300, 980, 906, 732)
+    door_r_outer = C.box(1505, -906, 300, 980, 906, 732)
+    hood_outer = C.box(160, -516, 786, 1342, 1032, 244)
     additions = {
         "PRT_Left_Aperture_Frame": [
-            C.rbox(1500, 758, 1006, 1000, 28, 24, 4),
+            C.rbox(1500, 758, 1006, 1000, 28, 24, 4).cut(door_l_outer),
         ],
         "PRT_Right_Aperture_Frame": [
-            C.rbox(1500, -786, 1006, 1000, 28, 24, 4),
+            C.rbox(1500, -786, 1006, 1000, 28, 24, 4).cut(door_r_outer),
         ],
         "PRT_Cowl_Upper_Panel": [
-            C.rbox(1488, -638, 1006, 300, 1276, 22, 5),
+            C.rbox(1488, -638, 1006, 300, 1276, 22, 5)
+             .cut(hood_outer).cut(_cowl_plenum_slot()),
         ],
         "PRT_Rear_Deck_Frame": [
             C.rbox(2700, -638, 1008, 540, 1276, 24, 5),
@@ -146,11 +182,47 @@ def _augment_body_parts(parts):
     return [(_compound_with(shape, additions.get(name, [])), color, name) for shape, color, name in parts]
 
 
+def _door_hardware(s):
+    """Hinges (two leaves + vertical pins) at the door's front edge and the
+    latch striker pocket at its rear edge -- the hardware a closure needs to
+    actually hang and shut.  Kept inside the door's own shut region."""
+    items = []
+    hinge_y0 = 760.0 if s > 0 else -790.0
+    for z0 in (410.0, 630.0):
+        items.append(C.rbox(1512, hinge_y0, z0, 40, 30, 58, 5))
+        items.append(C.cyl(5.5, 70, (1522, s * 778, z0 - 6), (0, 0, 1)))
+    # latch with claw slot at the rear shut face
+    latch_y0 = 758.0 if s > 0 else -788.0
+    latch = C.rbox(2428, latch_y0, 512, 30, 30, 52, 4)
+    latch = latch.cut(C.box(2434, latch_y0 - 8, 528, 12, 46, 14))
+    items.append(latch)
+    return items
+
+
 def _augment_closure_parts(parts):
-    """Extend door tops up to the beltline seal without changing part names."""
+    """Extend door tops to the beltline seal and add the closure HARDWARE
+    (hinges, latches) without changing part names."""
     additions = {
-        "door_L": [C.rbox(1509, 790, 1008, 972, 22, 20, 4)],
-        "door_R": [C.rbox(1509, -812, 1008, 972, 22, 20, 4)],
+        "door_L": [C.rbox(1509, 790, 1008, 972, 22, 20, 4)] + _door_hardware(1),
+        "door_R": [C.rbox(1509, -812, 1008, 972, 22, 20, 4)] + _door_hardware(-1),
+        "hood": [
+            # rear-corner gooseneck hinges + front safety-catch latch plate
+            C.rbox(1430, 396, 990, 64, 26, 22, 5),
+            C.rbox(1430, -422, 990, 64, 26, 22, 5),
+            C.cyl(5, 40, (1444, 388, 1000), (0, 1, 0)),
+            C.cyl(5, 40, (1444, -428, 1000), (0, 1, 0)),
+            C.rbox(196, -36, 836, 26, 72, 20, 4),
+            C.cyl(6, 26, (210, 0, 818), (0, 0, 1)),
+        ],
+        "trunk_lid": [
+            # front-corner hinge arms + rear latch
+            C.rbox(3512, 392, 1008, 56, 24, 26, 5),
+            C.rbox(3512, -416, 1008, 56, 24, 26, 5),
+            C.cyl(5, 36, (3524, 384, 1020), (0, 1, 0)),
+            C.cyl(5, 36, (3524, -424, 1020), (0, 1, 0)),
+            C.rbox(4128, -32, 1000, 24, 64, 18, 4),
+            C.cyl(6, 22, (4140, 0, 984), (0, 0, 1)),
+        ],
     }
     return [(_compound_with(shape, additions.get(name, [])), color, name) for shape, color, name in parts]
 

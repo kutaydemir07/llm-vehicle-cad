@@ -45,23 +45,23 @@ def _exhaust_system() -> list:
     col = (820.0, -360.0, 430.0)              # 4-1 merge point
     prim_r = 21.0
 
-    # four primary tubes, each kept in its own lane and entering the collector
-    # mouth at a DISTINCT position (left/upper/lower/right) so they merge into the
-    # cone instead of blobbing through one another.
-    # spread the entries around the mouth (mostly in z) but keep them INBOARD of
-    # the front strut tower that sits just outboard on the exhaust side
-    merge = [(-24, 8), (-9, 26), (9, -26), (24, -8)]   # (dy, dz) around the mouth
+    # four primary tubes in the four QUADRANTS of the collector mouth: entry
+    # centres on a r26 circle (adjacent spacing 36.8) while the tube tapers
+    # 21 -> 18 into the merge, so neighbouring runners never share space --
+    # four r18 circles on r26 fit a r48 mouth exactly like a welded 4-1.
+    merge = [(-18.4, 18.4), (18.4, 18.4), (-18.4, -18.4), (18.4, -18.4)]
     for i, bx in enumerate(bore_x):
         dy, dz = merge[i]
         end = (col[0], col[1] + dy, col[2] + dz)
         path = [
             (bx, y_port, z_port),
             (bx + 8, y_port - 64, z_port - 72),
-            ((bx + col[0]) / 2.0, -332.0 + dy * 0.6, (z_port + col[2]) / 2.0 - 20 + dz * 0.4),
+            ((bx + col[0]) / 2.0, -332.0 + dy * 0.85, (z_port + col[2]) / 2.0 - 20 + dz * 0.85),
             (col[0] - 30, end[1], end[2]),
             end,
         ]
-        parts.append((C.tube_path(path, prim_r), C.EXHAUST_C, f"PRT_Exhaust_Primary_{i+1}"))
+        parts.append((C.tube_path(path, [prim_r, prim_r, prim_r, 19.0, 18.0]),
+                      C.EXHAUST_C, f"PRT_Exhaust_Primary_{i+1}"))
 
     # tapered 4-into-1 collector
     collector = C.tube_path([col, (980, -342, 404), (1086, -300, 372)],

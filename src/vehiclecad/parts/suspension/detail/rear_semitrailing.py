@@ -65,9 +65,12 @@ def _trailing_arm_left():
                            (3300, 645, 312), boss], 27, cap=True)
     web    = C.swept_tube([(3185, 472, 332), (3212, 566, 332)], 14, cap=True)
 
-    # sleeved bonded rubber pivot bushings, axis along Y
+    # sleeved bonded rubber pivot bushings, axis along Y, with their M12
+    # through-bolts + nuts into the subframe pivot brackets
     bush_i = ME.bonded_bushing(32, 10, 56, (ip[0] - 12, ip[1] - 28, ip[2]), (0, 1, 0))
     bush_o = ME.bonded_bushing(32, 10, 56, (op[0] - 12, op[1] - 28, op[2]), (0, 1, 0))
+    bolt_i = ME.through_bolt("M12", 70, (ip[0] - 12, ip[1] - 35, ip[2]), (0, 1, 0))
+    bolt_o = ME.through_bolt("M12", 70, (op[0] - 12, op[1] - 35, op[2]), (0, 1, 0))
 
     # hub boss: short tube along Y, bored so the hub's seal collar clears; its
     # outboard face (boss_face) is where the hub carrier seats.
@@ -94,23 +97,31 @@ def _trailing_arm_left():
     arb_tab  = _rbox(arb[0] - 16, arb[1] - 16, arb[2] - 11, 32, 32, 22, 5)
     arb_post = C.swept_tube([(3358, 652, 308), (arb[0], arb[1], arb[2])], 11, cap=True)
 
-    return _U([spar_f, spar_r, web, bush_i, bush_o, hub_boss, spring_pad,
-               ear_l, ear_r, brkt, pin, arb_tab, arb_post])
+    return _U([spar_f, spar_r, web, bush_i, bush_o, bolt_i, bolt_o,
+               hub_boss, spring_pad, ear_l, ear_r, brkt, pin, arb_tab, arb_post])
 
 
 def _rear_hub_left():
-    """Rear hub carrier: wheel-bearing housing + outboard wheel flange + inboard
-    half-shaft stub.  Its inboard face is coincident with the arm's hub boss."""
+    """Rear hub carrier as a MACHINED part: the bearing housing is bored open
+    from the inboard side so the pressed-in ball bearing is actually visible in
+    its bore, the wheel flange carries four M12 stud holes on the 100 mm PCD,
+    and a circlip groove retains the bearing -- not a fused solid blob."""
     hub = REAR["hub_centre"]          # (3372, 716.5, 300)
     seat_y = hub[1] - 20.0            # 696.5 - meets the arm boss face
     housing = _cyl(58, 64, (hub[0], seat_y, hub[2]),        (0, 1, 0))   # bearing housing
     flange  = _cyl(72, 14, (hub[0], seat_y + 58, hub[2]),   (0, 1, 0))   # wheel mount face
-    # inboard bearing-seal collar - stays inside the arm boss bore (no protrusion
-    # onto the hub axis where the cast spars converge), so arm and hub only share
-    # the seat plane.
     collar  = _cyl(18, 6, (hub[0], seat_y - 6, hub[2]),     (0, 1, 0))
+    body = _U([housing, flange, collar])
+    # bearing bore (inboard, r44) + circlip groove at its mouth
+    body = body.cut(_cyl(44, 42, (hub[0], seat_y - 8, hub[2]), (0, 1, 0)))
+    body = body.cut(_cyl(46, 3, (hub[0], seat_y + 30, hub[2]), (0, 1, 0)))
+    # four wheel-stud holes through the flange, PCD r50
+    for k in range(4):
+        a = math.radians(45.0 + 90.0 * k)
+        body = body.cut(_cyl(7, 22, (hub[0] + 50 * math.cos(a), seat_y + 54,
+                                     hub[2] + 50 * math.sin(a)), (0, 1, 0)))
     bearing = ME.radial_ball_bearing(43, 20, 22, (hub[0], seat_y + 22, hub[2]), (0, 1, 0), ball_count=12)
-    return _U([housing, flange, collar, bearing])
+    return _U([body, bearing])
 
 
 # ------------------------------------------------------------------------

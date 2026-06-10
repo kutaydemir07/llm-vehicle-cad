@@ -19,17 +19,19 @@ COL_COPPER = (0.84, 0.48, 0.18)
 
 
 def _ecu():
-    return C.rbox(1080, -520, 650, 100, 100, 54, 5)
+    # 90 mm forward of the frame-rail tower leg (leg occupies x1176..1216 at
+    # this height) on the right apron, clear of the strut tower (x<=930)
+    return C.rbox(990, -520, 650, 100, 100, 54, 5)
 
 
 def _ecu_bracket():
-    tray = C.rbox(1074, -526, 642, 112, 112, 6, 3)
-    rear_tab = C.rbox(1074, -526, 642, 8, 112, 64, 3)
+    tray = C.rbox(984, -526, 642, 112, 112, 6, 3)
+    rear_tab = C.rbox(984, -526, 642, 8, 112, 64, 3)
     isolators = [
-        C.cyl(5, 6, (1092, -506, 648), (0, 0, 1)),
-        C.cyl(5, 6, (1168, -506, 648), (0, 0, 1)),
-        C.cyl(5, 6, (1092, -434, 648), (0, 0, 1)),
-        C.cyl(5, 6, (1168, -434, 648), (0, 0, 1)),
+        C.cyl(5, 6, (1002, -506, 648), (0, 0, 1)),
+        C.cyl(5, 6, (1078, -506, 648), (0, 0, 1)),
+        C.cyl(5, 6, (1002, -434, 648), (0, 0, 1)),
+        C.cyl(5, 6, (1078, -434, 648), (0, 0, 1)),
     ]
     return C.U([tray, rear_tab, *isolators])
 
@@ -37,9 +39,9 @@ def _ecu_bracket():
 def _ecu_connectors():
     shells = []
     for y in (-508, -484, -460):
-        shells.append(C.rbox(1182, y, 662, 22, 16, 28, 3))
-        shells.append(C.cyl(3, 10, (1204, y + 8, 676), (1, 0, 0)))
-    loom_boot = C.rbox(1198, -510, 658, 16, 66, 38, 5)
+        shells.append(C.rbox(1092, y, 662, 22, 16, 28, 3))
+        shells.append(C.cyl(3, 10, (1114, y + 8, 676), (1, 0, 0)))
+    loom_boot = C.rbox(1108, -510, 658, 16, 66, 38, 5)
     return C.U([*shells, loom_boot])
 
 

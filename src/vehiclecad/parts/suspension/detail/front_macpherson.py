@@ -43,10 +43,17 @@ _BORE_R  = 30.0     # knuckle clamp / perch bore (slip-fit over the tube)
 # ------------------------------------------------------------------------
 
 def _strut_foot():
-    """Machined lower spigot of the strut tube - the cartridge datum.  It is
-    gripped by the knuckle clamp sleeve, so it stays a clean r28 spigot."""
+    """Machined lower spigot of the strut tube - the cartridge datum.  Gripped
+    by the knuckle clamp sleeve: it carries the production machining -- a
+    circlip groove above the clamp band and the pinch-bolt notch the knuckle
+    bolt passes through -- so it reads as a turned/milled part."""
     spigot = cq.Workplane("XY").cylinder(60, _TUBE_R).translate((0, 0, 30))  # z0..60
     spigot = spigot.faces("<Z").chamfer(3)
+    groove = C.cyl(_TUBE_R + 1.0, 3.5, (0, 0, 46), (0, 0, 1)).cut(
+        C.cyl(_TUBE_R - 2.5, 5.5, (0, 0, 45), (0, 0, 1)))
+    notch = C.cyl(5.5, 2 * _TUBE_R + 8, (-_TUBE_R - 4, 0, 18), (1, 0, 0))
+    foot = spigot.val().cut(groove).cut(notch)
+    spigot = cq.Workplane(obj=foot)
     mating.tag(spigot, top=">Z")
     return spigot
 
@@ -135,9 +142,13 @@ def _lca_left():
     arm_r = C.swept_tube([rp, (900, 425, 226), (834, 616, 230), bjm], 18, cap=True)
     web   = C.swept_tube([(758, 392, 222), (892, 396, 226)], 12, cap=True)
 
-    # bonded pivot bushings with steel sleeves, axis along X
+    # bonded pivot bushings with steel sleeves, axis along X, each CLAMPED by
+    # its M12 through-bolt + nut into the subframe clevis -- a closed joint
     bush_f = ME.bonded_bushing(24, 8, 50, (fp[0] - 25, fp[1], fp[2]), (1, 0, 0))
     bush_r = ME.bonded_bushing(24, 8, 50, (rp[0] - 25, rp[1], rp[2]), (1, 0, 0))
+    # head/washer seat ON the subframe clevis face (x<=625), not inside it
+    bolt_f = ME.through_bolt("M12", 58, (fp[0] - 27, fp[1], fp[2]), (1, 0, 0))
+    bolt_r = ME.through_bolt("M12", 58, (rp[0] - 27, rp[1], rp[2]), (1, 0, 0))
 
     # ball-joint housing: cup holding the ball, its TOP face at z248 (coincident
     # with the knuckle underside); the r9.5 stud rises into the knuckle bore.
@@ -149,7 +160,8 @@ def _lca_left():
     # ARB drop-link tab on the forward arm
     sway_tab = _rbox(arb[0] - 16, arb[1] - 14, arb[2] - 11, 32, 28, 22, 5)
 
-    return _U([arm_f, arm_r, web, bush_f, bush_r, ball_jt, sway_tab])
+    return _U([arm_f, arm_r, web, bush_f, bush_r, bolt_f, bolt_r,
+               ball_jt, sway_tab])
 
 
 # ------------------------------------------------------------------------

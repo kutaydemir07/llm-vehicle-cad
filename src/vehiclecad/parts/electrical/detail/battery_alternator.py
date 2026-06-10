@@ -87,10 +87,15 @@ def _alternator_body():
 
 
 def _alternator_pulley():
-    pulley = C.cyl(32, 16, (450, -514, 596), (0, 1, 0))
-    groove = C.cyl(15, 22, (448, -517, 594), (0, 1, 0))
+    """V-belt pulley turned with TWO real V-grooves (lofted flank profile),
+    centre nut and shaft hub -- matching the crank pulley's belt tracks."""
+    prof = ((0.0, 32.0), (2.5, 32.0), (5.5, 22.0), (8.0, 32.0),
+            (10.5, 32.0), (13.0, 22.0), (15.5, 32.0), (16.0, 32.0))
+    pulley = C.loft_circles([((450, -514 - t, 596), r, (0, 1, 0)) for t, r in prof],
+                            ruled=True)
     hub = C.cyl(12, 24, (450, -526, 596), (0, 1, 0))
-    return C.U([pulley.cut(groove), hub])
+    nut = C.cyl(9, 7, (450, -533, 596), (0, 1, 0))
+    return C.U([pulley, hub, nut])
 
 
 def _alternator_mounting_bracket():

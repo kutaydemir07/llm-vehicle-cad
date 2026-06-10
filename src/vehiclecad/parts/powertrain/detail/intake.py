@@ -52,30 +52,44 @@ def _intake_itb() -> list:
     parts.append((flange, C.ALLOY_E, "PRT_Intake_Head_Flange"))
 
     for i, bx in enumerate(bore_x):
-        # curved runner: head port  -  throttle-body base (sweeps up & outboard);
-        # tapers to the throttle-body bore (tb_r) at the top so the TB butts on it
-        runner = C.tube_path([
+        # curved runner: head port -> throttle-body base, BORED HOLLOW (5 mm
+        # wall) so the intake tract is a real open duct, not a solid slug
+        path = [
             (bx, y_port, z_port),
             (bx, (y_port + y_tb) / 2.0, z_port + 16),
             (bx, y_tb, z_tb0),
-        ], [tb_r + 3, tb_r + 3, tb_r])
+        ]
+        runner = C.tube_path(path, [tb_r + 3, tb_r + 3, tb_r]).cut(
+            C.tube_path([(bx, y_port - 4, z_port - 2),
+                         path[1], (bx, y_tb, z_tb0 + 4)],
+                        [tb_r - 2, tb_r - 2, tb_r - 5]))
         parts.append((runner, C.ALLOY_E, f"PRT_ITB_Runner_{i+1}"))
 
-        # throttle-body barrel with an internal (angled) butterfly plate
-        barrel = C.cyl(tb_r, z_tb1 - z_tb0, (bx, y_tb, z_tb0), (0, 0, 1))
-        plate = C.cyl(tb_r - 3, 3, (bx, y_tb, (z_tb0 + z_tb1) / 2.0), (0.32, 0, 1))
-        parts.append((C.U([barrel, plate]), C.ALLOY_E, f"PRT_Throttle_Body_{i+1}"))
+        # throttle-body barrel: BORED, with the angled butterfly plate visible
+        # in the bore and the throttle-shaft bosses crossing it
+        barrel = C.cyl(tb_r, z_tb1 - z_tb0, (bx, y_tb, z_tb0), (0, 0, 1)).cut(
+            C.cyl(tb_r - 4, z_tb1 - z_tb0 + 8, (bx, y_tb, z_tb0 - 4), (0, 0, 1)))
+        plate = C.cyl(tb_r - 4.5, 3, (bx, y_tb, (z_tb0 + z_tb1) / 2.0), (0.32, 0, 1))
+        shaft = C.cyl(4.5, 2 * tb_r + 14, (bx - tb_r - 7, y_tb, (z_tb0 + z_tb1) / 2.0), (1, 0, 0))
+        parts.append((C.U([barrel, plate, shaft]), C.ALLOY_E, f"PRT_Throttle_Body_{i+1}"))
 
-        # flared velocity-stack trumpet (the signature)
-        stack = C.bellmouth((bx, y_tb, z_tb1), (0, 0, 1), tb_r, tb_r + 16, 36)
+        # flared velocity-stack trumpet -- a HOLLOW horn with a rolled lip
+        stack = C.bellmouth((bx, y_tb, z_tb1), (0, 0, 1), tb_r, tb_r + 16, 36).cut(
+            C.bellmouth((bx, y_tb, z_tb1 - 2), (0, 0, 1), tb_r - 4, tb_r + 12, 40))
         parts.append((stack, C.ALLOY_E, f"PRT_Velocity_Stack_{i+1}"))
 
         # fuel injector dropping from the rail into the runner
         inj = C.tube_path([(bx, 300, 770), (bx, 320, 726)], 6.0)
         parts.append((inj, C.BLACK, f"PRT_Injector_{i+1}"))
 
-    # fuel rail spanning the four injectors
+    # fuel rail spanning the four injectors: extruded spine with injector
+    # bosses, an inlet banjo at the front and the pressure-regulator end cap
     rail = C.cyl(12, 420, (462, 300, 770), (1, 0, 0))
+    bosses = [C.cyl(9, 16, (bx, 304, 758), (0, 0.22, 1)) for bx in bore_x]
+    banjo = C.cyl(9, 18, (456, 300, 770), (1, 0, 0))
+    reg = C.cyl(15, 22, (882, 300, 770), (1, 0, 0))
+    reg_vac = C.cyl(4, 14, (904, 300, 770), (1, 0, 0))
+    rail = C.U([rail, banjo, reg, reg_vac] + bosses)
     parts.append((rail, (0.62, 0.63, 0.66), "PRT_Fuel_Rail"))
 
     # throttle linkage shaft + bellcrank levers tying the four bodies together

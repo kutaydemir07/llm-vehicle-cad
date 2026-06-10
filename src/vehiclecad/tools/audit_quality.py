@@ -42,11 +42,16 @@ def main():
                     except Exception:
                         pass
                     dx, dy, dz = bb.xlen, bb.ylen, bb.zlen
-                    # placeholder heuristic: few faces but a real-sized solid that
-                    # should be a detailed part (skip thin plates/strips & tiny bits)
+                    # placeholder heuristic: few faces AND the solid mostly fills
+                    # its bbox (a true box/cylinder stand-in).  Smooth sweeps and
+                    # lofts (helical springs, bent tubes, trumpets) legitimately
+                    # have 1-5 faces but tiny fill ratios, so fill separates a
+                    # crude prism from a real swept part.  Skip thin strips too.
                     mindim = min(dx, dy, dz)
+                    bbox_vol = max(dx * dy * dz, 1.0)
                     is_strip = mindim < 12 and f <= 6      # genuine flat plate/strip/trim
-                    placeholder = (0 <= f <= 8) and vol > 30_000 and not is_strip
+                    placeholder = ((0 <= f <= 8) and vol > 30_000 and not is_strip
+                                   and vol > 0.45 * bbox_vol)
                     rows.append((system, name, f, round(vol/1000, 1),
                                  round(dx), round(dy), round(dz),
                                  round(bb.xmin), round(bb.xmax),

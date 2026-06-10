@@ -37,26 +37,36 @@ def body_cutters():
         for _tag, yy, r in LAMPS:
             cuts.append(C.cyl(r + 8, 98, (38, s*yy, Z_LAMP), (1, 0, 0)))
     cuts.append(C.box(40, -GR_Y, GR_Z0, 96, 2*GR_Y, GR_Z1 - GR_Z0))       # grille
+    # central lower air-intake aperture: the intake mesh/back panel closes a
+    # REAL hole in the nose skin instead of being buried inside it
+    cuts.append(C.box(30, -286, 224, 80, 572, 150))
     return cuts
 
 
 def _lamp(s, tag, yy, r, out):
     side = "L" if s > 0 else "R"
     cy = s * yy
-    # reflector bowl, CLOSED at the back with a cap disc so the lens never shows
-    # the dark body cavity behind it (the old open bowl was the 'empty space').
-    shell = _cone(r, 0.52*r, 42, 78, cy, Z_LAMP).cut(_cone(r-8, 0.52*r-8, 46, 72, cy, Z_LAMP))
+    # PARABOLIC reflector bowl (lofted through a curved radius profile, not a
+    # straight cone), closed at the back with a cap disc so the lens never
+    # shows the dark body cavity behind it.
+    prof = ((78, 1.00), (90, 0.86), (104, 0.66), (118, 0.53))
+    outer = C.loft_circles([((x, cy, Z_LAMP), r * f, (1, 0, 0)) for x, f in prof])
+    inner = C.loft_circles([((x - 6, cy, Z_LAMP), max(r * f - 7, 4.0), (1, 0, 0))
+                            for x, f in prof])
+    shell = outer.cut(inner)
     cap = C.cyl(0.52*r + 2, 6, (118, cy, Z_LAMP), (1, 0, 0))            # bowl backing
     out.append((shell.fuse(cap), REFLECTOR, f"reflector_{tag}_{side}"))
     out.append((C.cyl(8, 24, (116, cy, Z_LAMP), (-1, 0, 0)), C.LIGHT, f"bulb_{tag}_{side}"))
-    # clear ribbed lens, seated at the body face and filling the bowl mouth
+    # clear FLUTED lens: three concentric optic rings cut into the face
     lens = C.cyl(r-1, 9, (60, cy, Z_LAMP), (1, 0, 0))
-    lens = lens.cut(C.cyl(0.7*r+1.5, 12, (57, cy, Z_LAMP), (1, 0, 0)).cut(
-        C.cyl(0.7*r-1.5, 14, (55, cy, Z_LAMP), (1, 0, 0))))
+    for f in (0.45, 0.62, 0.79):
+        lens = lens.cut(C.cyl(f*r + 1.2, 4, (58, cy, Z_LAMP), (1, 0, 0)).cut(
+            C.cyl(f*r - 1.2, 6, (57, cy, Z_LAMP), (1, 0, 0))))
     out.append((lens, C.LIGHT, f"headlamp_lens_{tag}_{side}"))
-    # chrome bezel ring closes the reveal between lens and aperture edge
+    # chrome bezel ring with a rolled front lip closes the reveal
     bez = C.cyl(r+8, 13, (55, cy, Z_LAMP), (1, 0, 0)).cut(C.cyl(r-2, 18, (51, cy, Z_LAMP), (1, 0, 0)))
-    out.append((bez, C.CHROME, f"headlamp_bezel_{tag}_{side}"))
+    lip = Solid.makeTorus(r + 5, 2.5, Vector(55, cy, Z_LAMP), Vector(1, 0, 0))
+    out.append((bez.fuse(lip), C.CHROME, f"headlamp_bezel_{tag}_{side}"))
 
 
 def parts():
@@ -92,8 +102,13 @@ def parts():
         # surround edge), not just the slat block, so the nose opening is not a
         # see-through hole into the engine bay / body cavity.
         by0 = 0.0 if j == 0 else -GR_Y
-        out.append((C.box(96, by0, GR_Z0, 22, GR_Y, (GR_Z1 - GR_Z0)), C.BLACK, f"kidney_back_{j}"))
         nsl = 9
+        # backing panel with slat-shadow grooves so it reads as a moulded part
+        back = C.box(96, by0, GR_Z0, 22, GR_Y, (GR_Z1 - GR_Z0))
+        for k in range(nsl):
+            back = back.cut(C.box(94, y0 + 6 + k*(w-12)/(nsl-1) - 2.5, GR_Z0 + 8,
+                                  6, 5, (GR_Z1 - GR_Z0) - 16))
+        out.append((back, C.BLACK, f"kidney_back_{j}"))
         slats = [C.box(64, y0 + 6 + k*(w-12)/(nsl-1) - 1.5, GR_Z0 + 8, 30, 3, (GR_Z1 - GR_Z0) - 16)
                  for k in range(nsl)]
         out.append((C.U(slats), C.CHROME, f"kidney_slats_{j}"))
@@ -123,32 +138,40 @@ def parts():
         fascia = fascia.cut(C.box(-12, s*566 - 64, 250, 110, 128, 96))        # brake-duct slots
     out.append((fascia, C.RED, "front_fascia"))
 
-    # bumper rub strip + splitter.  The splitter blade includes an upstand and
-    # small bolt pads that tuck into the lower valance so it no longer reads as
-    # a separate floating plate when viewed from the front.
-    out.append((C.box(2, -742, 470, 22, 1484, 34), C.TRIM_BLK, "front_bumper_strip"))
+    # bumper rub strip (profiled moulding) + splitter.  The splitter upstand and
+    # bolt pads stay FORWARD of the body's lower front lip (x<58) so they tuck
+    # against the valance without embedding in the nose skin.
+    out.append((C.rbox(2, -742, 470, 22, 1484, 34, 8), C.TRIM_BLK, "front_bumper_strip"))
     splitter_blade = C.rbox(-2, -728, 138, 50, 1456, 30, 12)
-    splitter_upstand = C.rbox(34, -708, 164, 28, 1416, 42, 6)
+    splitter_upstand = C.rbox(30, -708, 164, 20, 1416, 42, 6)
     splitter_bolt_pads = C.U([
-        C.rbox(28, -560 + i * 280, 184, 42, 82, 22, 5)
+        C.rbox(28, -560 + i * 280, 184, 30, 82, 22, 5)
         for i in range(5)
     ])
     out.append((C.U([splitter_blade, splitter_upstand, splitter_bolt_pads]),
                 C.TRIM_BLK, "front_splitter"))
 
-    # central intake mesh (recessed black + crosshatch)
-    out.append((C.box(52, -282, 228, 12, 564, 142), C.BLACK, "intake_back"))
+    # central intake mesh: bevelled blanking panel closing the new nose aperture
+    out.append((C.rbox(52, -282, 228, 12, 564, 142, 4), C.BLACK, "intake_back"))
     vbars = [C.box(46, -286 + 57*k, 230, 14, 6, 138) for k in range(11)]
     hbars = [C.box(46, -286, 230 + 46*k, 14, 572, 6) for k in range(4)]
     out.append((C.U(vbars + hbars), C.TRIM_BLK, "intake_mesh"))
 
-    # fog lamps (fill fascia holes) + brake-duct backs
+    # fog lamps: real reflector bowl + fluted lens, chrome ring with rolled lip
     for s in (1, -1):
         side = "L" if s > 0 else "R"
-        out.append((C.cyl(45, 16, (4, s*328, 300), (-1, 0, 0)).cut(C.cyl(37, 22, (0, s*328, 300), (-1, 0, 0))),
-                    C.CHROME, f"foglamp_ring_{side}"))
-        out.append((C.cyl(38, 20, (8, s*328, 300), (-1, 0, 0)), C.LIGHT, f"foglamp_{side}"))
-        out.append((C.box(40, s*566 - 60, 254, 14, 120, 88), C.BLACK, f"brake_duct_back_{side}"))
+        ring = C.cyl(45, 16, (4, s*328, 300), (-1, 0, 0)).cut(C.cyl(37, 22, (0, s*328, 300), (-1, 0, 0)))
+        ring = ring.fuse(Solid.makeTorus(41, 2.5, Vector(-10, s*328, 300), Vector(1, 0, 0)))
+        out.append((ring, C.CHROME, f"foglamp_ring_{side}"))
+        bowl = _cone(36, 20, 14, -4, s*328, 300).cut(_cone(33, 17, 16, -5, s*328, 300))
+        lens = C.cyl(36, 8, (-4, s*328, 300), (-1, 0, 0))
+        for f in (0.4, 0.7):
+            lens = lens.cut(C.cyl(36*f + 1.2, 3, (-12, s*328, 300), (1, 0, 0)).cut(
+                C.cyl(36*f - 1.2, 5, (-13, s*328, 300), (1, 0, 0))))
+        out.append((bowl.fuse(lens), C.LIGHT, f"foglamp_{side}"))
+        duct = C.rbox(40, s*566 - 60, 254, 14, 120, 88, 5)
+        duct = duct.cut(C.cyl(28, 6, (38, s*566, 298), (1, 0, 0)))
+        out.append((duct, C.BLACK, f"brake_duct_back_{side}"))
 
     # amber corner indicators set into the bumper ends
     for s in (1, -1):

@@ -68,26 +68,32 @@ def _front_subframe_rails():
 def _transmission_crossmember():
     """Pressed-steel gearbox support directly under the ManualGearbox rear mount.
 
-    The cross-car beam carries the gearbox mount on the centreline; outboard
-    gusset arms then run out and DOWN to the two floor frame rails at
-    ``+/-_RAIL_Y`` so the member is welded into the longitudinal frame instead
-    of hanging in space under the tunnel.
+    Drawn the way the production member actually sits: the cross-car beam runs
+    UNDER the floorpan (floor sheet z>=215, beam tube top 210) from frame rail
+    to frame rail at ``+/-_RAIL_Y``, and only the mount pedestal rises through
+    the open tunnel arch (tunnel walls |y|<100) to the gearbox-mount saddle.
     """
-    beam = C.swept_tube([(1350, 356, 332), (1350, -356, 332)], 22, cap=True)
-    saddle = _rbox_center(1350, 0, 348, 88, 170, 18, 6)
-    leg_l = C.swept_tube([(1350, 304, 220), (1350, 304, 332)], 18, cap=True)
+    # Production layout: the gearbox member is a SHORT bridge across the
+    # transmission tunnel, bolted to the floor flanges either side of the
+    # tunnel mouth -- NOT a full-width bar -- so the exhaust mid pipe
+    # (y -240..-340, z down to ~146) passes cleanly outboard of it.
+    beam = C.swept_tube([(1350, 150, 196), (1350, -150, 196)], 16, cap=True)
+    pad_l = _rbox_center(1350, 132, 209, 84, 56, 10, 4)   # bolts to floor underside
+    pad_r = _mirror(pad_l)
+    # mount pedestal: twin legs rising through the open tunnel arch to the
+    # saddle, whose top face (z338) sits 2 mm under the gearbox case bottom
+    # (z340) -- the mount rubber's working gap, not an embed.
+    saddle = _rbox_center(1350, 0, 329, 88, 170, 18, 6)
+    leg_l = C.swept_tube([(1350, 56, 200), (1350, 52, 320)], 14, cap=True)
     leg_r = _mirror(leg_l)
-    foot_l = _rbox_center(1350, 304, 224, 74, 64, 22, 6)
-    foot_r = _mirror(foot_l)
-    gus_l = C.swept_tube([(1350, 304, 250), (1350, 238, 326)], 12, cap=True)
+    # gussets stay inside the open tunnel arch (walls at |y|=98.5..100) and
+    # inboard of the carpet heel pads (|y|>=78)
+    gus_l = C.swept_tube([(1350, 66, 198), (1350, 48, 280)], 10, cap=True)
     gus_r = _mirror(gus_l)
-    bolt_l = _cyl(9, 16, (1350, 52, 354), (0, 0, 1))
+    bolt_l = _cyl(9, 12, (1350, 52, 328), (0, 0, 1))
     bolt_r = _mirror(bolt_l)
-    # Outboard arms reaching the floor frame rails (y~RAIL_Y, dropping to rail z).
-    arm_l = C.swept_tube([(1350, 352, 330), (1350, 452, 288), (1350, _RAIL_Y, 250)], 16, cap=True)
-    arm_r = _mirror(arm_l)
-    return _U([beam, saddle, leg_l, leg_r, foot_l, foot_r, gus_l, gus_r,
-               bolt_l, bolt_r, arm_l, arm_r])
+    return _U([beam, pad_l, pad_r, saddle, leg_l, leg_r, gus_l, gus_r,
+               bolt_l, bolt_r])
 
 
 # Lateral offset of the main floor frame rails.  Chosen well inboard of the
@@ -95,6 +101,15 @@ def _transmission_crossmember():
 # floor longitudinal-rail line, so the rails clear the propshaft, fuel and
 # exhaust runs that share the underbody.
 _RAIL_Y = 490.0
+
+# Strut-tower leg path (left side), shared with the inner-fender apron relief
+# in body/structure/engine_bay.py so the formed slot always tracks the brace.
+TOWER_LEG_PATH = _TOWER_LEG_PATH = [
+    (1192, 487, 320),   # branch off the main rail at the dive shoulder
+    (1196, 500, 478),
+    (1196, 504, 640),
+    (1196, 500, 784),   # weld: into engine-bay tie firewall tab
+]
 
 
 def _frame_rail_left():
@@ -118,37 +133,42 @@ def _frame_rail_left():
     tie, kept aft of the brake booster (x>=1205), so nothing is left floating.
     """
     y = _RAIL_Y
-    # main rail: front crossmember -> engine bay -> torque box -> floor -> subframe
+    # main rail: front crossmember -> engine bay -> torque-box dive -> floor run.
+    # The dive completes AHEAD of the firewall plate (x~1219.4, z>=220) and the
+    # floor run holds tube-top z=214: 1 mm under the 215 footwell sheet, 13 mm
+    # under the carpet (z>=227) and 18 mm under the pedal box (z>=232), so the
+    # rail stays a true underbody member instead of poking into the cabin.
     main = C.swept_tube([
         (352,  500, 296),   # weld: front crossmember (y < 553 half-width)
         (500,  488, 306),   # outboard of steering pump, kiss subframe-rail leaf
-        (700,  486, 332),   # rise above the front ARB (ARB top z~307)
-        (1010, 484, 360),   # engine-bay front-rail line, outboard of bellhousing
-        (1185, 486, 350),   # below the brake booster, approaching the firewall
-        (1262, 498, 298),   # torque-box kick-down toward the floor
-        (1350, y,   250),   # weld: gearbox-crossmember outboard arm
-        (1640, y,   202),   # tuck just under the floorpan
-        (2250, 496, 196),   # mid-floor, clear corridor
-        (2820, 494, 212),   # approach the rear subframe
-        (3070, 488, 238),   # weld: rear subframe side pod
+        (700,  486, 326),   # engine-bay rail line (front ARB ends inboard, |y|<=392)
+        (1010, 484, 334),   # outboard of bellhousing, inboard of the apron wall
+        (1130, 486, 326),   # begin the torque-box dive ahead of the firewall
+        (1162, 488, 258),
+        (1190, 490, 186),   # dive completes AHEAD of the firewall plate (x>=1219.4);
+                            # the fat tube's radial reach (+26 mm in x) stays clear
+        (1300, 490, 186),   # floor run begins: tube top 214
+        (1640, 490, 186),
+        (2250, 496, 186),   # mid-floor, clear corridor
+        (2820, 494, 186),   # approach the rear subframe
+        (3105, 490, 186),   # stay under the carpet (x<=3105) all the way back
     ], 28, cap=True)
-    # rear rail: rear subframe -> over the axle -> rear crossmember.  Thinner so
-    # it threads the window outboard of the diff/CV and above the rear ARB.
+    # rear rail: low past the subframe, then the over-axle kick-up THROUGH the
+    # x~3340 window between the coil spring (x<=3332) and half-shaft (x>=3360).
     rear = C.swept_tube([
-        (3070, 488, 238),
-        (3300, 512, 286),   # outboard of diff & CV boot, above ARB, below damper eye
-        (3680, 516, 322),   # climb to trunk-floor height, outboard of muffler/spare well
+        (3105, 490, 186),
+        (3340, 506, 262),   # spring/half-shaft window, aft of the arm web
+        (3560, 514, 304),   # past the ARB, climbing over the axle
+        (3680, 516, 322),   # trunk-floor height, outboard of muffler/spare well
         (4030, 518, 346),
         (4195, 512, 360),   # weld: rear crossmember (z 304..421)
     ], 22, cap=True)
-    # shock-tower leg: floor rail -> upper engine-bay (strut-tower) tie.  Kept at
-    # x>=1205 (aft of the booster) and |y|>512 so it clears the brake booster.
-    leg = C.swept_tube([
-        (1200, 487, 342),   # branch off the main rail
-        (1208, 522, 478),
-        (1209, 532, 640),
-        (1208, 528, 784),   # weld: into engine-bay tie firewall tab (y 466..534, z 763..797)
-    ], 20, cap=True)
+    # shock-tower leg: floor rail -> upper engine-bay (strut-tower) tie.  Held at
+    # |y|<=504+r so it stays inboard of the tower gusset plate (y 528..532) and
+    # x<=1216 so it never crosses the firewall plate (x>=1219.4) or booster dome;
+    # it lands on the engine-bay tie firewall tab (x 1179..1213, z 763..797).
+    # The inner-fender apron carries a matching formed relief (engine_bay.py).
+    leg = C.swept_tube(_TOWER_LEG_PATH, 20, cap=True)
     return _U([main, rear, leg])
 
 

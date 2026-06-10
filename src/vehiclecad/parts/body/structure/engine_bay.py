@@ -39,6 +39,8 @@ def _rad_support():
     outer = C.box(x0 + 6, -432, 332, dx - 12, 864, 494)        # z332..826
     core = C.box(x0 - 10, -365, 420, dx + 20, 730, 380)        # opening z420..800
     frame = outer.cut(core)
+    # relieve the hood shut region so the slam panel sits UNDER the hood line
+    frame = frame.cut(C.box(160, -516, 786, 1342, 1032, 244))
     sill = C.rbox(x0 + 4, -332, 332, dx - 8, 664, 42, 8)       # lower core support
     return C.U([frame, sill])
 
@@ -55,6 +57,11 @@ def _inner_fender(side):
     panel = P.clip_to(panel, P.env(f"INNER_FENDER_{side}"), margin=24)
     # strut-tower clearance bore so the strut/spring pass through the apron
     panel = panel.cut(C.cyl(92, 760, (810, s * 560, 240), (0, 0, 1)))
+    # formed relief where the frame-rail tower leg rises along the apron --
+    # the slot tracks the brace path so the panel seam-welds around it
+    from vehiclecad.parts.chassis.structure.crossmembers import TOWER_LEG_PATH
+    leg = [(x, s * y, z) for (x, y, z) in TOWER_LEG_PATH]
+    panel = panel.cut(C.swept_tube(leg, 24, cap=True))
     return panel
 
 

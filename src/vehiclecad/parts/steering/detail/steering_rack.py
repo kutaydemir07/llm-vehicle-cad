@@ -78,12 +78,19 @@ def _rack():
     tie_l = _tie_rod(left_inner, STEER["tie_rod_outer_L"], 1)
     tie_r = _tie_rod(right_inner, STEER["tie_rod_outer_R"], -1)
 
+    # rack clamp through-bolts into the subframe carrier (two per bracket)
+    clamp_bolts = [
+        ME.through_bolt("M10", 44, (bx, by, z - 44), (0, 0, 1))
+        for by in (170 + 31, -232 + 31)
+        for bx in (x - 22, x + 22)
+    ]
+
     return _U([
         rack_housing, centre_bulge, cap_l, cap_r,
         pinion_tower, pinion_boss, input_spline,
         mount_l, mount_r, bush_l, bush_r,
         boot_l, boot_r, tie_l, tie_r,
-    ])
+    ] + clamp_bolts)
 
 
 def _rack_bar_pinion_gear():
@@ -91,17 +98,19 @@ def _rack_bar_pinion_gear():
     x, _, z = STEER["rack_centre"]
     px, py, pz = STEER["pinion_base"]
     rack_bar = _rbox(x - 7, -286, z - 7, 14, 572, 14, 3)
+    # rack teeth at the PINION's circular pitch (2*pi*r_pitch/14 ~ 9 mm) so the
+    # pair actually indexes tooth-for-tooth
     teeth = []
-    for i in range(30):
-        y = -240 + i * 16
-        teeth.append(_rbox(x - 9, y, z + 7, 18, 7, 5, 1))
+    for i in range(60):
+        y = -268 + i * 9.0
+        teeth.append(_rbox(x - 9, y, z + 7, 18, 4.5, 5, 1))
 
     pinion = _cyl(20, 18, (px, py, pz + 4), (0, 0, 1))
+    # radial teeth ON the pinion barrel (not a floating crown above it)
     pinion_teeth = []
     for i in range(14):
-        a = math.radians(i * 360.0 / 14)
-        tooth = _rbox(px - 4, py - 3, pz + 22, 8, 6, 6, 1)
-        pinion_teeth.append(tooth.rotate((px, py, pz + 13), (px, py, pz + 14), math.degrees(a)))
+        tooth = _rbox(px + 17, py - 3, pz + 5, 8, 6, 16, 1)
+        pinion_teeth.append(tooth.rotate((px, py, pz), (px, py, pz + 1), i * 360.0 / 14))
     lower_bearing = ME.radial_ball_bearing(13, 6, 8, (px, py, pz - 6), (0, 0, 1), ball_count=8)
     upper_bearing = ME.radial_ball_bearing(13, 6, 8, (px, py, pz + 88), (0, 0, 1), ball_count=8)
     return _U([rack_bar, pinion, lower_bearing, upper_bearing] + teeth + pinion_teeth)

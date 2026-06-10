@@ -1,4 +1,14 @@
-"""Fuel system components and separate fuel-line routes."""
+"""Fuel system components and separate fuel-line routes.
+
+Packaging notes (all verified against the underbody):
+  * The tank's outboard-lower corners are NOTCHED where the semi-trailing
+    arms sweep (arm envelope x2906..3418, |y|>252, z254..358) -- the
+    production saddle tank has exactly these reliefs.
+  * The in-tank pump hangs from a top flange; nothing rises above z448 so it
+    stays inside the bench's pump-hatch pocket.
+  * Filter and feed/return lines run UNDER the floor (tube top < z215), never
+    through the cabin: floor sheet z215/220, frame rails at |y|~462..518.
+"""
 
 from __future__ import annotations
 
@@ -18,15 +28,41 @@ def _fuel_tank():
     right = _rbox(2965, -345, 270, 175, 275, 140, 10).cut(
         _box(2975, -335, 280, 155, 255, 130))
     neck = _cyl(26, 70, (3010, 320, 360), (0, 0, 1))
-    return _U([left, right, neck])
+    tank = _U([left, right, neck])
+    # trailing-arm corner notches (arm sweep z254..358 outboard of |y|252)
+    tank = tank.cut(_box(2958, 250, 256, 192, 108, 110))
+    tank = tank.cut(_box(2958, -358, 256, 192, 108, 110))
+    return tank
 
 
 def _fuel_pump():
-    return _cyl(46, 150, (3050, 150, 300), (0, 0, 1))
+    """In-tank pump: canister body hanging from a top mounting flange with
+    feed/return spigots and the electrical stub -- not a bare cylinder."""
+    canister = _cyl(40, 118, (3050, 150, 302), (0, 0, 1))
+    canister = canister.cut(_cyl(36, 6, (3050, 150, 300), (0, 0, 1)))
+    flange = _cyl(48, 6, (3050, 150, 424), (0, 0, 1))
+    feed = _cyl(6, 16, (3032, 150, 430), (0, 0, 1))
+    ret = _cyl(5, 14, (3068, 150, 430), (0, 0, 1))
+    elec = _rbox(3044, 168, 428, 12, 18, 10, 3)
+    strainer = _cyl(30, 8, (3050, 150, 294), (0, 0, 1))
+    return _U([canister, flange, feed, ret, elec, strainer])
 
 
 def _fuel_filter():
-    return _cyl(30, 90, (2700, 430, 300), (1, 0, 0))
+    """Inline canister filter UNDER the floor beside the left frame rail
+    (production position) with hose-barb end fittings."""
+    body = _cyl(30, 78, (2706, 430, 184), (1, 0, 0))
+    dome_f = C.loft_circles([((2706, 430, 184), 30, (1, 0, 0)),
+                             ((2698, 430, 184), 22, (1, 0, 0)),
+                             ((2694, 430, 184), 10, (1, 0, 0))])
+    dome_r = C.loft_circles([((2784, 430, 184), 30, (1, 0, 0)),
+                             ((2792, 430, 184), 22, (1, 0, 0)),
+                             ((2796, 430, 184), 10, (1, 0, 0))])
+    barb_f = _cyl(6, 14, (2680, 430, 184), (1, 0, 0))
+    barb_r = _cyl(6, 14, (2796, 430, 184), (1, 0, 0))
+    band = _cyl(32, 10, (2740, 430, 184), (1, 0, 0)).cut(
+        _cyl(30.5, 14, (2738, 430, 184), (1, 0, 0)))
+    return _U([body, dome_f, dome_r, barb_f, barb_r, band])
 
 
 def _fuel_rail():
@@ -41,18 +77,25 @@ def _fuel_rail():
 
 
 def _fuel_feed_line():
-    # tank -> filter -> forward under the floor -> up to the ITB fuel-rail inlet
-    # (which now sits outboard of the runners at y~356)
+    # tank -> under-floor run beside the left rail (tube top z<=208 < floor 215)
+    # -> filter -> rises in the ENGINE BAY (x<1220, ahead of the firewall) -> rail
     return C.swept_tube(
-        [(3060, 350, 340), (2700, 430, 300), (2000, 360, 265), (1200, 340, 270), (640, 348, 540), (505, 356, 701)],
+        [(3060, 350, 340), (2965, 380, 280), (2880, 420, 210),
+         (2796, 430, 184),                       # filter outlet barb
+         (2200, 430, 196), (1300, 430, 196),
+         (1180, 410, 250), (640, 348, 540), (505, 356, 701)],
         8,
         cap=True,
     )
 
 
 def _fuel_return_line():
+    # rail -> engine-bay drop (clear below the intake head flange, z<650 at
+    # its y-band) -> under-floor run 14 mm inboard of the feed line
     return C.swept_tube(
-        [(520, 238, 666), (700, 305, 286), (1200, 318, 258), (2000, 338, 252), (2700, 406, 286), (3060, 320, 324)],
+        [(520, 238, 666), (560, 300, 560), (700, 340, 360), (1180, 444, 246),
+         (1300, 444, 190), (2200, 444, 190), (2700, 444, 190),
+         (2880, 430, 214), (3060, 320, 324)],
         6,
         cap=True,
     )
@@ -72,4 +115,3 @@ def parts():
         (_fuel_return_line(), C.STEEL, "PRT_Fuel_Return_Line"),
         (_fuel_tank_vent_line(), C.STEEL, "PRT_Fuel_Tank_Vent_Line"),
     ]
-

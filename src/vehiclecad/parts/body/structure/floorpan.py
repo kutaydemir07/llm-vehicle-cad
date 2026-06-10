@@ -89,7 +89,13 @@ def _floorpan():
     # Pedal box and toe-board clearance at the firewall.
     pedal_cut = _box(1210, -20, 235, 165, 585, 330)
 
-    for cutter in (rear_left_cut, rear_right_cut, carrier_cut, pedal_cut):
+    # The transmission tunnel is OPEN from below (the arch straddles the
+    # gearbox/propshaft); the full-width base plate must not close its bottom.
+    tunnel_bottom_cut = _box(x0 + 2, -(t_hw - t), floor_z - 10,
+                             dx - 4, 2 * (t_hw - t), 12)
+
+    for cutter in (rear_left_cut, rear_right_cut, carrier_cut, pedal_cut,
+                   tunnel_bottom_cut):
         floorpan = floorpan.cut(cutter)
     return floorpan
 

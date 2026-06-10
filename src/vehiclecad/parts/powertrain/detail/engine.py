@@ -87,6 +87,10 @@ def _engine_block() -> list:
         ((342, 0, 445), 86, (1, 0, 0)), ((332, 0, 445), 64, (1, 0, 0)),
         ((322, 0, 445), 86, (1, 0, 0)), ((312, 0, 445), 60, (1, 0, 0)),
     ], ruled=True)   # faceted V-grooves; stays within x312-360 (no smooth bulge into cover)
+    # hub counterbore + crank bolt with washer on the front face
+    pulley = pulley.cut(C.cyl(20, 8, (310, 0, 445), (1, 0, 0)))
+    pulley = pulley.fuse(C.cyl(19, 5, (313, 0, 445), (-1, 0, 0)))      # washer
+    pulley = pulley.fuse(C.cyl(11, 8, (308, 0, 445), (-1, 0, 0)))      # bolt head
     parts.append((pulley, C.STEEL, "PRT_I4_Engine_Crank_Pulley"))
 
     #  -  -  two-stage oil pan + drain plug  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
@@ -95,16 +99,34 @@ def _engine_block() -> list:
     pan_drain = C.cyl(16, 30, (832, 0, 296), (0, 0, -1))
     parts.append((C.U([pan_main, pan_sump, pan_drain]), C.ENGINE, "PRT_I4_Engine_Oil_Pan"))
 
-    #  -  -  spin-on oil filter canister (front, exhaust side)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
-    oil_filter = C.cyl(46, 122, (452, -258, 404), (0, -0.18, 1))   # outboard of the block
+    #  -  -  spin-on oil filter canister (front, exhaust side)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+    # domed crimped-top can with a fluted wrench band at the base
+    _fax = np.array([0.0, -0.18, 1.0]); _fax = _fax / np.linalg.norm(_fax)
+    _f0 = np.array([452.0, -258.0, 404.0])
+    def _fp(t):
+        return tuple(_f0 + _fax * t)
+    oil_filter = C.loft_circles([(_fp(0), 46, tuple(_fax)), (_fp(94), 46, tuple(_fax)),
+                                 (_fp(110), 39, tuple(_fax)), (_fp(122), 28, tuple(_fax))])
+    for k in range(16):
+        a = 2 * np.pi * k / 16.0
+        rad = np.array([np.cos(a), np.sin(a) * _fax[2], -np.sin(a) * _fax[1]])
+        oil_filter = oil_filter.cut(C.cyl(3.5, 26, tuple(_f0 + rad * 47.5 - _fax * 2), tuple(_fax)))
+    oil_filter = oil_filter.fuse(C.cyl(10, 6, _fp(-6), tuple(_fax)))   # thread nipple
     parts.append((oil_filter, (0.78, 0.66, 0.12), "PRT_I4_Engine_Oil_Filter"))
 
     #  -  -  bellhousing flange + starter motor (rear)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
-    flange = C.cyl(150, 16, (990, 0, 455), (1, 0, 0)).cut(   # seats on block rear (x990)
-        C.cyl(72, 24, (986, 0, 455), (1, 0, 0)))
+    # thin rear engine plate (8 mm): the flywheel sits BEHIND it, not in it
+    flange = C.cyl(150, 8, (990, 0, 455), (1, 0, 0)).cut(
+        C.cyl(72, 16, (986, 0, 455), (1, 0, 0)))
     starter = C.cyl(40, 150, (838, -258, 408), (1, 0, 0))    # barrel outboard of block
     starter_nose = C.cyl(30, 40, (978, -244, 430), (1, 0, 0))
-    parts.append((C.U([flange, starter, starter_nose]), C.STEEL, "PRT_I4_Engine_Bellhousing_Starter"))
+    # Bendix drive pinion: same module as the flywheel ring gear (m~2.7,
+    # z10), so the tooth geometry is mesh-correct.  (The barrel keeps the
+    # historic outboard position dictated by the wide block/sump castings.)
+    from vehiclecad.geometry import machine_elements as _ME
+    pinion = _ME.spur_gear_x(10.1, 16.1, 16, 1000, -244, 430, 10, bore_r=5)
+    parts.append((C.U([flange, starter, starter_nose, pinion]), C.STEEL,
+                  "PRT_I4_Engine_Bellhousing_Starter"))
 
     #  -  -  core (freeze) plugs down the exhaust side  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
     plugs = [C.cyl(17, 8, (bx, -210, 520), (0, -1, 0)) for bx in _BORE_X]

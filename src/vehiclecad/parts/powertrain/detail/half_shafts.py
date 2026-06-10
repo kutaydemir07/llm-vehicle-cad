@@ -5,6 +5,8 @@ Each is a turned shaft with a CV joint housing at each end and a tapered rubber
 boot (lofted bellows) sealing each joint  -  recognisable hardware, not a tube.
 """
 from __future__ import annotations
+import math
+from cadquery import Solid, Vector
 from vehiclecad.core.reference import common as C
 from vehiclecad.geometry import machine_elements as ME
 from vehiclecad.parts.powertrain.detail import layout as L
@@ -40,18 +42,38 @@ def _half_shaft_left():
     inner_boot_end = FL_Y + 82
     outer_boot_start = HUB_Y - 92
 
-    # shaft between the two CV joints.  It is raised through the rail window while
-    # the CV cups remain exactly on the differential and rear-hub hardpoints.
+    # shaft between the two CV joints with SPLINED ends (the boot small clamps
+    # grip over the spline run-out, as on the production axle)
     shaft = C.tube_path([
         (X, inner_boot_end, SHAFT_Z),
         (X, (inner_boot_end + outer_boot_start) / 2.0, SHAFT_Z + 8),
         (X, outer_boot_start, SHAFT_Z),
     ], 12)
+    # inner ring set stays inboard of the damper tube (damper |y| >= 516)
+    for ys, step in ((inner_boot_end + 1, 4.0), (outer_boot_start - 13, 5.0)):
+        for k in range(3):
+            shaft = shaft.fuse(C.cyl(13.0, 2.4, (X, ys + k * step, SHAFT_Z), (0, 1, 0)))
     out.append((shaft, COL, "Half_Shaft"))
 
-    # CV joint housings (bell shaped) at the diff and the hub
+    # CV joint housings: real cups -- bored cavities with the six-ball
+    # complement visible in the race, and a boot-clamp groove at each mouth
     inner = C.cyl(34, 50, (X, FL_Y, Z), (0, 1, 0))
+    inner = inner.cut(C.cyl(24, 36, (X, FL_Y + 16, Z), (0, 1, 0)))
+    inner = inner.cut(C.cyl(35.5, 4, (X, FL_Y + 42, Z), (0, 1, 0)).cut(
+        C.cyl(32, 8, (X, FL_Y + 40, Z), (0, 1, 0))))
     outer = C.cyl(36, 52, (X, HUB_Y - 52, Z), (0, 1, 0))
+    outer = outer.cut(C.cyl(25, 36, (X, HUB_Y - 52, Z), (0, 1, 0)))
+    outer = outer.cut(C.cyl(37.5, 4, (X, HUB_Y - 14, Z), (0, 1, 0)).cut(
+        C.cyl(34, 8, (X, HUB_Y - 16, Z), (0, 1, 0))))
+    for cy, race_r, host in ((FL_Y + 26, 28.5, "inner"), (HUB_Y - 40, 30.0, "outer")):
+        balls = [
+            Solid.makeSphere(5.5, Vector(X + race_r * math.cos(a), cy, Z + race_r * math.sin(a)))
+            for a in [2 * math.pi * k / 6 for k in range(6)]
+        ]
+        if host == "inner":
+            inner = C.U([inner] + balls)
+        else:
+            outer = C.U([outer] + balls)
     for y, radius, housing in ((FL_Y + 9, 42, inner), (HUB_Y - 9, 44, outer)):
         for sx, sz in ((24, 18), (-24, 18), (24, -18), (-24, -18)):
             housing = housing.fuse(ME.cap_screw("M8", 8, (X + sx, y, Z + sz), (0, 1, 0)))

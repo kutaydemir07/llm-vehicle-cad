@@ -48,9 +48,16 @@ def _tail_lamp(s, out):
     z0, z1 = TL_Z0, TL_Z1
     yi, wi = y0 + 1.5, w - 3.0                 # 1.5 mm reveal inside the aperture
     zi0, zi1 = z0 + 1.5, z1 - 1.5
-    # black housing fills the aperture from behind up to the body face
-    out.append((C.box(4306, y0 - 3, z0 - 5, 32, w + 6, (z1 - z0) + 10),
-                C.BLACK, f"taillamp_housing_{side}"))
+    # black housing: a moulded lamp body with three bulb chambers and bulb
+    # holders, not a solid brick
+    housing = C.box(4306, y0 - 3, z0 - 5, 32, w + 6, (z1 - z0) + 10)
+    cw = (w - 24.0) / 3.0
+    for k in range(3):
+        housing = housing.cut(C.box(4310, y0 + 6 + k * (cw + 6), z0 + 6,
+                                    26, cw, (z1 - z0) - 12))
+    bulbs = [C.cyl(8, 12, (4306, y0 + 6 + k * (cw + 6) + cw / 2,
+                           (z0 + z1) / 2.0), (1, 0, 0)) for k in range(3)]
+    out.append((C.U([housing] + bulbs), C.BLACK, f"taillamp_housing_{side}"))
     # lens block fills the opening; front sits ~6 mm proud of the 4338 tail face
     lf0, lf1 = 4332.0, 4344.0                  # lens x-span (back butts the housing)
     amber_h = 30.0
@@ -62,6 +69,13 @@ def _tail_lamp(s, out):
            .cut(amber).cut(reverse))
     # shallow horizontal rib grooves on the red lens face (texture, not gaps)
     ribs = C.U([C.box(lf1 - 4, yi, zi0 + 30 + 40 * k, 8, wi, 5) for k in range(3)])
+    # vertical optic flutes on the amber and reverse lens faces
+    for j in range(5):
+        amber = amber.cut(C.box(lf1 - 3, yi + 24 + j * (wi - 48) / 4.0,
+                                zi1 - amber_h + 4, 6, 4, amber_h - 8))
+    for j in range(4):
+        reverse = reverse.cut(C.box(lf1 - 3, rev_y + 16 + j * (rev_w - 32) / 3.0,
+                                    zi0 + 5, 6, 4, rev_h - 10))
     out.append((red.cut(ribs), C.TAILR, f"taillamp_red_{side}"))
     out.append((amber, C.AMBER, f"taillamp_amber_{side}"))
     out.append((reverse, C.TAILW, f"taillamp_reverse_{side}"))
@@ -86,8 +100,10 @@ def parts():
     # --- full-width tail lamps + black centre panel with roundel + script ---
     for s in (1, -1):
         _tail_lamp(s, out)
-    out.append((C.box(X_FACE + 8, -CP_Y, TL_Z0 - 6, 18, 2*CP_Y, (TL_Z1 - TL_Z0) + 12),
-                C.BLACK, "tail_centre_panel"))
+    centre = C.box(X_FACE + 8, -CP_Y, TL_Z0 - 6, 18, 2 * CP_Y, (TL_Z1 - TL_Z0) + 12)
+    centre = centre.cut(C.box(X_FACE + 18, -CP_Y + 14, TL_Z0 + 6, 10,
+                              2 * CP_Y - 28, (TL_Z1 - TL_Z0) - 12))
+    out.append((centre, C.BLACK, "tail_centre_panel"))
     for s, rgb, nm in C.roundel((X_FACE + 34, 0, TL_Z1 - 44), "+x", r=30):
         out.append((s, rgb, "rear_" + nm))
     out.append((C.box(X_FACE + 28, -120, TL_Z0 + 14, 10, 240, 26), C.CHROME, "model_script"))
@@ -106,16 +122,21 @@ def parts():
     exhaust_slot = C.rbox(4328, -398, 202, 96, 244, 120, 18)
     rear = rear.cut(exhaust_slot)                                      # twin-tip exhaust relief
     out.append((rear, C.RED, "rear_bumper"))
-    out.append((C.box(4332, -742, 470, 22, 1484, 32), C.TRIM_BLK, "rear_bumper_strip"))
+    out.append((C.rbox(4332, -742, 470, 22, 1484, 32, 8), C.TRIM_BLK, "rear_bumper_strip"))
 
-    # number plate (recessed) + lamp
-    out.append((C.box(4392, -180, 398, 12, 360, 138), C.BLACK, "plate_recess"))
+    # number plate tray (raised border, recessed floor) + plate
+    tray = C.box(4392, -180, 398, 12, 360, 138).cut(
+        C.box(4396, -170, 408, 10, 340, 118))
+    out.append((tray, C.BLACK, "plate_recess"))
     out.append((C.box(4398, -172, 406, 8, 344, 122), (0.86, 0.86, 0.82), "number_plate"))
 
-    # rear reflectors set into the valance
+    # rear reflectors set into the valance, with bevelled fluted faces
     for s in (1, -1):
         side = "L" if s > 0 else "R"
-        out.append((C.box(4392, s*470 - 70, 330, 12, 140, 60), C.TAILR, f"rear_reflector_{side}"))
+        refl = C.rbox(4392, s * 470 - 70, 330, 12, 140, 60, 4)
+        for j in range(4):
+            refl = refl.cut(C.box(4400, s * 470 - 56 + j * 32, 336, 6, 4, 48))
+        out.append((refl, C.TAILR, f"rear_reflector_{side}"))
 
     # NOTE: trunk spoiler / wing / pedestals / endplates are owned by
     # Wing and deck aero are owned by their own detail modules to avoid duplicates.

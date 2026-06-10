@@ -249,12 +249,16 @@ POWERTRAIN: Dict[str, Vec3] = {
 
     # ManualGearbox 265 transmission
     "trans_front":        (1020, 0, 460),      # bellhousing face
-    "trans_rear":         (1400, 0, 420),      # output flange
+    "trans_rear":         (1400, 0, 445),      # output flange -- COAXIAL with the
+                                               # crank axis (a gearbox output shaft
+                                               # is straight; the propshaft's front
+                                               # joint takes the working angle)
     "trans_cg":           (1210, 0, 440),
     "trans_mount":        (1350, 0, 370),      # transmission crossmember mount
 
     # Driveshaft / propshaft
-    "prop_front":         (1400, 0, 420),      # trans output
+    "prop_front":         (1400, 0, 445),      # trans output (front U-joint/guibo
+                                               # carries the down-angle to the diff)
     "prop_rear":          (3280, 0, 310),      # diff input
 
     # Rear differential + LSD

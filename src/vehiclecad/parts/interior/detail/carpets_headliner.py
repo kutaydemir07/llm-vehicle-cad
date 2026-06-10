@@ -18,13 +18,19 @@ COL_HEADLIN  = (0.22, 0.22, 0.24)
 def _floor_carpet():
     # Floor mats are thin surface layers, not solid blocks filling the tunnel.
     cabin_x0 = 1228.0
-    cabin_dx = 1877.0
+    # all floor trim stops at the floorpan carrier cut (x2860): nothing floats
+    # over the open subframe bay (the bench covers it from above)
+    cabin_dx = 2860.0 - cabin_x0
     left  = C.box(cabin_x0, 124, 227, cabin_dx, 568, 4)
     right = C.mirror_y(left)
-    rear_left = C.box(2580, 124, 227, 525, 420, 4)
+    # rear mats stop at the floorpan carrier cut (x2860): no carpet floating
+    # over the open subframe bay
+    rear_left = C.box(2580, 124, 227, 278, 420, 4)
     rear_right = C.mirror_y(rear_left)
-    tunnel_top = C.box(cabin_x0, -96, 482, cabin_dx, 192, 4)
-    tunnel_left = C.box(cabin_x0, 104, 231, cabin_dx, 4, 251)
+    # tunnel trim also stops at the carrier cut (x2860); the bench covers it aft
+    tunnel_dx = 2860.0 - cabin_x0
+    tunnel_top = C.box(cabin_x0, -96, 482, tunnel_dx, 192, 4)
+    tunnel_left = C.box(cabin_x0, 104, 231, tunnel_dx, 4, 251)
     tunnel_right = C.mirror_y(tunnel_left)
     heel_pad_l = C.rbox(1330, 78, 232, 210, 450, 5, 2)
     heel_pad_r = C.mirror_y(heel_pad_l)

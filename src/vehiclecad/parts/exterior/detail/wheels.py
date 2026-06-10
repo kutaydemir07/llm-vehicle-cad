@@ -81,8 +81,13 @@ def _tire():
 
 def _rim():
     parts = []
-    # inner barrel (drop centre) -- dark alloy
-    barrel = C.cyl(186, FACE_Y + 92, (0, -92, 0), (0, 1, 0)).cut(C.cyl(178, FACE_Y + 104, (0, -98, 0), (0, 1, 0)))
+    # inner barrel with a REAL drop-centre well profile (revolved varying
+    # radius: bead seats at r186, well dipping to r170) -- dark alloy
+    prof = ((-92, 186.0), (-62, 186.0), (-46, 171.0), (4, 171.0),
+            (18, 186.0), (FACE_Y, 186.0))
+    outer = C.loft_circles([((0, y, 0), r, (0, 1, 0)) for y, r in prof])
+    inner = C.loft_circles([((0, y, 0), r - 8.0, (0, 1, 0)) for y, r in prof])
+    barrel = outer.cut(inner)
     inb_flange = C.cyl(193, 12, (0, -94, 0), (0, 1, 0)).cut(C.cyl(184, 16, (0, -96, 0), (0, 1, 0)))
     parts.append((barrel.fuse(inb_flange), BARREL, "rim_barrel"))
 
@@ -222,6 +227,11 @@ def _caliper_local(r_disc=152.0):
 
 
 def _detail_bearing_hub(solid):
+    """Machined hub: the flange is BORED so the pressed-in bearing is visible
+    in its seat (not fused invisibly inside solid stock), with a circlip
+    groove at the bore mouth and the grease-seal ring above it."""
+    solid = solid.cut(C.cyl(45, 24, (0, 6, 0), (0, 1, 0)))
+    solid = solid.cut(C.cyl(47, 2.5, (0, 27, 0), (0, 1, 0)))
     bearing = ME.radial_ball_bearing(44, 20, 22, (0, 10, 0), (0, 1, 0), ball_count=12)
     seal = C.cyl(48, 4, (0, 31, 0), (0, 1, 0)).cut(C.cyl(23, 6, (0, 30, 0), (0, 1, 0)))
     return solid.fuse(bearing).fuse(seal)

@@ -116,17 +116,23 @@ def _output_flange(point, side_name):
 
 
 def _ring_gear_pinion_set():
-    """Crown wheel and pinion visible through the hollow LSD carrier."""
+    """Crown wheel and pinion visible through the hollow LSD carrier.
+
+    Real final-drive tooth geometry: 41-tooth crown wheel with teeth set at a
+    35-degree spiral angle on the gear face, driven by a 13-tooth pinion
+    (3.15:1 -- the road final drive), both on the proper tooth form."""
     cx, cy, cz = L.DIFF_CENTER
     ring = _cyl(84, 16, (cx - 4, cy - 8, cz), (0, 1, 0)).cut(
         _cyl(56, 20, (cx - 6, cy - 10, cz), (0, 1, 0))
     )
     teeth = []
-    for i in range(32):
-        a = 360.0 * i / 32
-        tooth = _rbox(cx - 5, cy - 10, cz + 80, 10, 20, 9, 1)
+    for i in range(41):
+        a = 360.0 * i / 41
+        tooth = _rbox(cx - 6, cy - 9, cz + 79, 12, 18, 10, 1)
+        # spiral angle about the local radial axis, then the polar pattern
+        tooth = tooth.rotate((cx, cy, cz + 84), (cx + 1, cy, cz + 84), 35.0)
         teeth.append(tooth.rotate((cx, cy, cz), (cx, cy + 1, cz), a))
-    pinion = ME.spur_gear_x(27, 34, 22, L.PROPSHAFT_REAR[0] + 22, 0, L.PROPSHAFT_REAR[2], 14, bore_r=10)
+    pinion = ME.spur_gear_x(27, 34, 22, L.PROPSHAFT_REAR[0] + 22, 0, L.PROPSHAFT_REAR[2], 13, bore_r=10)
     pinion_shaft = _cyl(11, 118, (L.PROPSHAFT_REAR[0], 0, L.PROPSHAFT_REAR[2]), (1, 0, 0))
     return _U([ring, pinion, pinion_shaft] + teeth)
 

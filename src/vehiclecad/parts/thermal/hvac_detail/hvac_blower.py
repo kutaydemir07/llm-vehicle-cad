@@ -6,6 +6,7 @@ centrifugal blower, leaves a serviceable heater-core pocket, and routes ducts to
 the centre vents, demist outlets and footwells.
 """
 from __future__ import annotations
+import math
 from vehiclecad.core.reference import common as C
 
 COL_HVAC  = (0.18, 0.20, 0.22)
@@ -42,9 +43,24 @@ def _blower_scroll():
 
 
 def _blower_motor():
+    """DC blower motor as the recognisable component: finned can, domed brush
+    end-bell with terminal spades, mounting flange ring, and the shaft stub
+    into the scroll."""
     motor = C.cyl(30, 54, (1304, -215, 675), (1, 0, 0))
-    brush_cap = C.cyl(20, 14, (1358, -215, 675), (1, 0, 0))
-    return motor.fuse(brush_cap)
+    for k in range(8):
+        fin = C.box(1308, -216.5, 705, 44, 3, 3)
+        motor = motor.fuse(fin.rotate((1304, -215, 675), (1305, -215, 675),
+                                      k * 45.0))
+    end_bell = C.loft_circles([
+        ((1358, -215, 675), 28, (1, 0, 0)),
+        ((1366, -215, 675), 22, (1, 0, 0)),
+        ((1372, -215, 675), 12, (1, 0, 0)),
+    ])
+    terminals = C.U([C.box(1370, -212 + dy, 668, 8, 3, 8) for dy in (-8, 2)])
+    flange = C.cyl(36, 5, (1304, -215, 675), (1, 0, 0)).cut(
+        C.cyl(31, 9, (1302, -215, 675), (1, 0, 0)))
+    shaft = C.cyl(5, 12, (1294, -215, 675), (1, 0, 0))
+    return C.U([motor, end_bell, terminals, flange, shaft])
 
 
 def _fresh_air_plenum():

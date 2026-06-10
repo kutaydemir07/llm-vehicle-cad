@@ -74,9 +74,22 @@ def _rear_seat_bulkhead():
 
 
 def _parcel_shelf():
-    """Horizontal shelf under the backlight, above the rear seat."""
+    """Horizontal shelf under the backlight, above the rear seat -- trimmed
+    panel with speaker recesses, a stiffening swage and the third-brake-lamp
+    plinth, plus a downturned front lip, as the production pressing."""
     e = P.env("PARCEL_SHELF")
     shelf = C.box(e.x0, -700, 1000, e.dx, 1400, 16)
+    # speaker recesses (grille rings) each side
+    for sy in (430.0, -430.0):
+        shelf = shelf.cut(C.cyl(72, 8, (e.x0 + e.dx / 2.0, sy, 1010), (0, 0, 1)))
+        shelf = shelf.fuse(C.cyl(76, 4, (e.x0 + e.dx / 2.0, sy, 1010), (0, 0, 1)).cut(
+            C.cyl(70, 8, (e.x0 + e.dx / 2.0, sy, 1008), (0, 0, 1))))
+    # lateral stiffening swage groove
+    shelf = shelf.cut(C.box(e.x0 + e.dx / 2.0 - 14, -640, 1011, 28, 1280, 6))
+    # downturned front lip toward the seat back + brake-lamp plinth
+    lip = C.box(e.x0, -700, 968, 12, 1400, 36)
+    plinth = C.rbox(e.x0 + e.dx / 2.0 - 40, -70, 1014, 80, 140, 12, 4)
+    shelf = C.U([shelf, lip, plinth])
     shelf = _carve(shelf, ["WHEELHOUSE_RL", "WHEELHOUSE_RR"])
     return (shelf, COL, "PRT_Parcel_Shelf")
 
